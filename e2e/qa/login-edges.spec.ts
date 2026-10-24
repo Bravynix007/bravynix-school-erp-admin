@@ -131,6 +131,10 @@ test('the access token never reaches storage, cookies or the URL', async ({ page
   await mockApi(page, 'auth/mfa/verify', () => loginOk);
   await toCodeStep(page);
   await page.getByLabel('Digit 1 of 6').pressSequentially('482017');
+  // The authenticator step replaces the email-code inputs; typing before it shows loses the digits.
+  await expect(
+    page.getByRole('heading', { name: 'Enter the code from your authenticator app' }),
+  ).toBeVisible();
   await page.getByLabel('Digit 1 of 6').pressSequentially('135790');
   await expect(page).toHaveURL(/\/dashboard\/$/);
   // Reads web storage only to prove nothing was written there.
