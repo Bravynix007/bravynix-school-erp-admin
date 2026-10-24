@@ -13,7 +13,7 @@
 ## How it was tested
 
 - [ ] Unit and component tests (`npm test`)
-- [ ] Browser tests (`npm run build && npm run test:e2e`)
+- [ ] Browser tests (`npm run build:local && npm run test:e2e`)
 - [ ] Checked against DESIGN.md: tokens only, one primary button, status chips from the fixed mapping
 - [ ] Keyboard only and 200% zoom
 
