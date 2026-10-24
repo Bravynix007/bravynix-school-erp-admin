@@ -120,9 +120,50 @@ describe('ApiClient', () => {
     expect(tokenStore.get()).toBe('old');
   });
 
-  it('rejects a refresh that fails with 5xx instead of reporting the session over', async () => {
-    const client = new ApiClient({ baseUrl: BASE, fetch: fakeFetch(fail(503, 'SERVICE_UNAVAILABLE')) });
+  it('rejects a refresh that fails with 5xx or 429 instead of reporting the session over', async () => {
+    const client = new ApiClient({
+      baseUrl: BASE,
+      fetch: fakeFetch(
+        fail(503, 'SERVICE_UNAVAILABLE'),
+        fail(429, 'RATE_LIMITED', {}, { 'Retry-After': '30' }),
+      ),
+    });
     await expect(client.refresh()).rejects.toMatchObject({ status: 503 });
+    await expect(client.refresh()).rejects.toMatchObject({ status: 429, retryAfterSeconds: 30 });
+  });
+
+  it.each([
+    [400, 'CSRF_HEADER_MISSING'],
+    [403, 'FORBIDDEN'],
+    [404, 'NOT_FOUND'],
+  ])('ends the session when the refresh is refused with %i (re-review R-C3)', async (status, code) => {
+    tokenStore.set('old');
+    const onSessionEnded = vi.fn();
+    const fetch = fakeFetch(fail(401, 'TOKEN_EXPIRED'), fail(status, code));
+    const client = new ApiClient({ baseUrl: BASE, fetch, onSessionEnded });
+
+    await expect(client.data('me')).rejects.toMatchObject({ status, code });
+    expect(onSessionEnded).toHaveBeenCalledWith(expect.objectContaining({ code }));
+    expect(tokenStore.get()).toBeNull();
+  });
+
+  it('does not refresh a late TOKEN_EXPIRED after sign-out (re-review R-C4)', async () => {
+    tokenStore.set('old');
+    const onSessionEnded = vi.fn();
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const fetch = vi.fn(async () => {
+      await gate;
+      return new Response(JSON.stringify(fail(401, 'TOKEN_EXPIRED').body), { status: 401 });
+    });
+    const client = new ApiClient({ baseUrl: BASE, fetch, onSessionEnded });
+
+    const pending = client.data('me');
+    tokenStore.clear();
+    release();
+    await expect(pending).rejects.toMatchObject({ code: 'TOKEN_EXPIRED' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(onSessionEnded).not.toHaveBeenCalled();
   });
 
   it('ends the session when the repeat after a refresh is refused (review C5)', async () => {

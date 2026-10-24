@@ -14,4 +14,4 @@ Read `README.md` first; its "Rules every change follows" section is binding.
   (DESIGN.md 16); a component test and, for a full flow, a Playwright spec with mocked API.
 - Never commit secrets, real personal data or seeded credentials.
 - Before pushing: `npm run format:check && npm run lint && npm run typecheck && npm test &&
-npm run build && npm run test:e2e`.
+npm run build:local && npm run test:e2e`.

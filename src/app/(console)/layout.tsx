@@ -22,7 +22,8 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
   }, [state.status, router]);
 
   if (state.status === 'ended') return <SessionEnded reason={state.reason} />;
-  if (state.status === 'unreachable') return <ServerUnreachable />;
+  if (state.status === 'unreachable')
+    return <ServerUnreachable retryAfterSeconds={state.retryAfterSeconds} />;
   if (state.status !== 'signed-in') return <FullPageSpinner />;
 
   return (

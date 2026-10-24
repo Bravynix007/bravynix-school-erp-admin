@@ -4,7 +4,11 @@ const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const LOCAL_API = 'http://localhost:3000/v1';
 
 const schema = z.object({
-  NEXT_PUBLIC_APP_ENV: z.enum(['local', 'staging', 'production']).default('local'),
+  // No default: a build that forgot its settings must fail, not ship as a
+  // local build pointing at localhost (re-review R-C1).
+  NEXT_PUBLIC_APP_ENV: z.enum(['local', 'staging', 'production'], {
+    error: 'NEXT_PUBLIC_APP_ENV is required: local, staging or production',
+  }),
   NEXT_PUBLIC_API_BASE_URL: z.url().optional(),
 });
 
@@ -14,9 +18,9 @@ export interface ConsoleEnv {
 }
 
 /**
- * A local build may default to the local API over HTTP. A staging or
- * production build must name its API, over HTTPS, and never a local one, so
- * a build made without settings cannot ship pointing at localhost.
+ * Every build names its environment. A local build may default to the local
+ * API over HTTP. A staging or production build must name its API, over
+ * HTTPS, and never a local one, so no build can ship pointing at localhost.
  */
 export function parseEnv(raw: Record<string, string | undefined>): ConsoleEnv {
   const parsed = schema.parse(raw);

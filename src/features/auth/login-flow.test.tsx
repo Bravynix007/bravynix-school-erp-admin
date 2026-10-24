@@ -120,6 +120,26 @@ describe('LoginFlow', () => {
     expect(authApi.enrolMfa).toHaveBeenCalledTimes(2);
   });
 
+  it('offers only Start again when enrolment fails for good (re-review R-C8)', async () => {
+    await reachCodeStep();
+    authApi.verifyOtp.mockResolvedValue({ mfaRequired: true, mfaToken: 'mfa-1', mfaEnrolled: false });
+    authApi.enrolMfa.mockRejectedValueOnce(new ApiError(403, 'CONSOLE_NOT_ALLOWED', 'x', 'r'));
+
+    await typeCode('482017');
+    expect(await screen.findByText(/The console is for Super Admins only/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start again' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Try again/ })).not.toBeInTheDocument();
+  });
+
+  it('waits out Retry-After before enrolment can be tried again (re-review R-C8)', async () => {
+    await reachCodeStep();
+    authApi.verifyOtp.mockResolvedValue({ mfaRequired: true, mfaToken: 'mfa-1', mfaEnrolled: false });
+    authApi.enrolMfa.mockRejectedValueOnce(new ApiError(429, 'RATE_LIMITED', 'x', 'r', [], {}, 30));
+
+    await typeCode('482017');
+    expect(await screen.findByRole('button', { name: 'Try again in 0:30' })).toBeDisabled();
+  });
+
   it('starts again when the MFA token has expired', async () => {
     await reachCodeStep();
     authApi.verifyOtp.mockResolvedValue({ mfaRequired: true, mfaToken: 'mfa-2', mfaEnrolled: true });

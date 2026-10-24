@@ -14,5 +14,9 @@ export default function IndexPage() {
     if (state.status === 'signed-in') router.replace('/dashboard');
     if (state.status === 'signed-out' || state.status === 'ended') router.replace('/login');
   }, [state.status, router]);
-  return state.status === 'unreachable' ? <ServerUnreachable /> : <FullPageSpinner />;
+  return state.status === 'unreachable' ? (
+    <ServerUnreachable retryAfterSeconds={state.retryAfterSeconds} />
+  ) : (
+    <FullPageSpinner />
+  );
 }

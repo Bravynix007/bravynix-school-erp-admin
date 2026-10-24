@@ -28,8 +28,18 @@ export interface RequestOptions {
 
 type Fetch = typeof fetch;
 
-/** `ok: false` only when the API refused the refresh with 401: the session is over. */
+/** `ok: false` when the API refused the refresh: the session is over (API design 8.2). */
 export type RefreshResult = { ok: true } | { ok: false; error: ApiError };
+
+/**
+ * Whether a failed refresh means the session is over. Only an answer that
+ * might change on a later try keeps it: no answer at all, a timeout, a 5xx,
+ * or 429 (API design 8.2). Every other 4xx, such as 400, 401 or 403, ends it,
+ * so the operator is never held on "Can't reach the server" by a refusal.
+ */
+export function refreshRefused(error: ApiError): boolean {
+  return error.status >= 400 && error.status < 500 && error.status !== 408 && error.status !== 429;
+}
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -78,7 +88,7 @@ function toApiError(response: Response, body: unknown): ApiError {
   );
 }
 
-/** Runs `task` while holding a lock shared by every tab, where the browser has Web Locks. */
+/** Runs `task` while holding a lock shared by every tab, where the browser has Web Locks (API design 6.3). */
 async function withTabLock<T>(task: () => Promise<T>): Promise<T> {
   const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
   return locks ? await locks.request(REFRESH_LOCK, task) : task();
@@ -110,9 +120,13 @@ export class ApiClient {
     } catch (error) {
       if (!(error instanceof ApiError) || options.anonymous) throw error;
       if (error.status === 401 && error.code === 'TOKEN_EXPIRED') {
-        // Another call may have refreshed while this one was in flight.
         const current = tokenStore.get();
-        if (current === null || current === usedToken) {
+        // Signed out while this call was in flight: there is no session to
+        // refresh, and ending it again would replace "signed out" with
+        // "session ended" (API design 6.4).
+        if (current === null) throw error;
+        // Another call may have refreshed while this one was in flight.
+        if (current === usedToken) {
           const result = await this.refresh();
           if (!result.ok) this.endSession(result.error);
         }
@@ -130,9 +144,10 @@ export class ApiClient {
 
   /**
    * Exchanges the HttpOnly refresh cookie for a new access token. Resolves
-   * `ok: false` with the API's 401 when the session is over. A network
-   * failure, timeout or 5xx rejects with that `ApiError` and ends nothing:
-   * the cookie may still be good (API design 8.2).
+   * `ok: false` with the API's refusal when the session is over (see
+   * `refreshRefused`). A network failure, timeout, 5xx or 429 rejects with
+   * that `ApiError` and ends nothing: the cookie may still be good (API
+   * design 8.2).
    *
    * Calls in this tab share one request, and tabs take turns through a Web
    * Lock, because a refresh token is single use and a second use ends the
@@ -158,13 +173,13 @@ export class ApiClient {
       tokenStore.set(token);
       return { ok: true };
     } catch (error) {
-      if (!(error instanceof ApiError) || error.status !== 401) throw error;
+      if (!(error instanceof ApiError) || !refreshRefused(error)) throw error;
       tokenStore.clear();
       return { ok: false, error };
     }
   }
 
-  /** The repeat after a refresh: any 401 now is final, and so is the session. */
+  /** The repeat after a refresh: any 401 now is final, and so is the session (API design 8.2). */
   private async retry<T>(path: string, options: RequestOptions): Promise<ApiEnvelope<T>> {
     try {
       return await this.send<T>(path, options);

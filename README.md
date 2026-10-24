@@ -24,12 +24,13 @@ code arrives in Mailpit at http://localhost:8025.
 | Script                 | What it does                                                                             |
 | ---------------------- | ---------------------------------------------------------------------------------------- |
 | `npm run dev`          | Dev server on port 3001 (Turbopack)                                                      |
-| `npm run build`        | Static export to `out/`                                                                  |
+| `npm run build`        | Static export to `out/`; needs `NEXT_PUBLIC_APP_ENV` set (see Configuration)             |
+| `npm run build:local`  | The same, with `.env.development`: a local build for the e2e tests                       |
 | `npm start`            | Serves `out/` on port 3001                                                               |
 | `npm run lint`         | ESLint (Next core web vitals, TypeScript, project rules)                                 |
 | `npm run typecheck`    | Generates typed routes, then `tsc --noEmit`                                              |
 | `npm test`             | Vitest unit and component tests (jsdom)                                                  |
-| `npm run test:e2e`     | Playwright in Chromium, Firefox and WebKit against the built `out/`, API mocked per test |
+| `npm run test:e2e`     | Playwright in Chromium, Firefox and WebKit against `out/` from `build:local`, API mocked |
 | `npm run format:check` | Prettier, with Tailwind class sorting                                                    |
 
 `npx playwright install chromium firefox webkit` fetches the browsers once. Where only Chromium
@@ -44,9 +45,17 @@ Read at build time and inlined into the bundle, so each environment gets its own
 | Variable                   | Example                          | Notes                                                                                                                                                                       |
 | -------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `NEXT_PUBLIC_API_BASE_URL` | `https://api.bravynix.in/v1`     | Must include `/v1`. Required and `https` (never a local host) for staging and production builds, which fail otherwise; a local build defaults to `http://localhost:3000/v1` |
-| `NEXT_PUBLIC_APP_ENV`      | `local`, `staging`, `production` | Shows an environment badge unless `production`                                                                                                                              |
+| `NEXT_PUBLIC_APP_ENV`      | `local`, `staging`, `production` | Required for every build, which fails without it. Shows an environment badge unless `production`                                                                            |
 
-Nothing secret belongs here: everything `NEXT_PUBLIC_*` ends up in the browser.
+`npm run dev` and `npm run build:local` read both from `.env.development`; `npm run build`
+does not, so a deploy that forgets them fails instead of shipping a local build. Nothing secret
+belongs here: everything `NEXT_PUBLIC_*` ends up in the browser.
+
+### Supported browsers
+
+The current and previous major versions of Chrome, Edge, Firefox and Safari (Safari 16.4 or
+later, the oldest Next.js 16 supports). All of them have Web Locks and BroadcastChannel, which
+keep tabs from refreshing at once and sign every tab out together.
 
 ## Layout
 

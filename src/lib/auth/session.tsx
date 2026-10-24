@@ -1,10 +1,20 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { api } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/api-error';
 import { authApi } from './auth-api';
+import { openSessionChannel, type SessionChannel } from './session-channel';
 import { tokenStore } from './token-store';
 
 export type SessionEndReason =
@@ -20,8 +30,11 @@ export type SessionState =
   | { status: 'checking' }
   | { status: 'signed-in' }
   | { status: 'signed-out' }
-  /** The refresh could not reach the API; the cookie may still be good. */
-  | { status: 'unreachable' }
+  /**
+   * The refresh got no usable answer (offline, timeout, 5xx or 429); the
+   * cookie may still be good. `retryAfterSeconds` comes from a 429 or 503.
+   */
+  | { status: 'unreachable'; retryAfterSeconds: number | null }
   | { status: 'ended'; reason: SessionEndReason };
 
 interface SessionContextValue {
@@ -51,9 +64,14 @@ const REASONS: Record<string, SessionEndReason> = {
   email_changed: 'email_changed',
 };
 
+function isReason(value: string): value is SessionEndReason {
+  return Object.values(REASONS).includes(value as SessionEndReason) || value === 'unknown';
+}
+
 export function reasonOf(error: ApiError): SessionEndReason {
   const reason = error.details.reason;
-  if (typeof reason === 'string' && reason in REASONS) return REASONS[reason]!;
+  // Object.hasOwn, so `constructor` or `toString` never match (re-review R-C6).
+  if (typeof reason === 'string' && Object.hasOwn(REASONS, reason)) return REASONS[reason]!;
   switch (error.code) {
     case 'TOKEN_EXPIRED':
     case 'REFRESH_TOKEN_INVALID':
@@ -71,18 +89,43 @@ export function reasonOf(error: ApiError): SessionEndReason {
  * Holds the console session. On load it asks for a fresh access token with
  * the HttpOnly refresh cookie; a 12-hour console session cannot be extended
  * (API design 6.1), so expiry ends in the "Session ended" card. Whenever the
- * session ends, every cached query is dropped so the next operator in this
- * tab sees nothing of the last one.
+ * session ends, every cached query is dropped so the next operator sees
+ * nothing of the last one, in this tab and, through the session channel, in
+ * every other open tab.
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<SessionState>({ status: 'checking' });
   const [attempt, setAttempt] = useState(0);
+  const channel = useRef<SessionChannel | null>(null);
+
+  useEffect(() => {
+    const opened = openSessionChannel((message) => {
+      tokenStore.clear();
+      queryClient.clear();
+      if (message.type === 'signed-out') {
+        setState({ status: 'signed-out' });
+      } else if (message.type === 'ended') {
+        setState({ status: 'ended', reason: isReason(message.reason) ? message.reason : 'unknown' });
+      } else {
+        // Someone signed in elsewhere: check whose session the cookie holds now.
+        setState({ status: 'checking' });
+        setAttempt((n) => n + 1);
+      }
+    });
+    channel.current = opened;
+    return () => {
+      opened.close();
+      channel.current = null;
+    };
+  }, [queryClient]);
 
   useEffect(() => {
     api.setSessionEndedHandler((error) => {
+      const reason = reasonOf(error);
       queryClient.clear();
-      setState({ status: 'ended', reason: reasonOf(error) });
+      setState({ status: 'ended', reason });
+      channel.current?.post({ type: 'ended', reason });
     });
     return () => api.setSessionEndedHandler(undefined);
   }, [queryClient]);
@@ -93,8 +136,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       (result) => {
         if (active) setState(result.ok ? { status: 'signed-in' } : { status: 'signed-out' });
       },
-      () => {
-        if (active) setState({ status: 'unreachable' });
+      (error: unknown) => {
+        const retryAfterSeconds = error instanceof ApiError ? error.retryAfterSeconds : null;
+        if (active) setState({ status: 'unreachable', retryAfterSeconds });
       },
     );
     return () => {
@@ -107,6 +151,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
       tokenStore.set(accessToken);
       setState({ status: 'signed-in' });
+      channel.current?.post({ type: 'signed-in' });
     },
     [queryClient],
   );
@@ -122,6 +167,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       tokenStore.clear();
       queryClient.clear();
       setState({ status: 'signed-out' });
+      channel.current?.post({ type: 'signed-out' });
     },
     [queryClient],
   );

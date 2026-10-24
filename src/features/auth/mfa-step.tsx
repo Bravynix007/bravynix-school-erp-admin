@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { OtpInput } from '@/components/ui/otp-input';
 import { Spinner } from '@/components/ui/spinner';
+import { ApiError } from '@/lib/api/api-error';
 import { authApi, type LoginTokens } from '@/lib/auth/auth-api';
+import { formatCountdown, useCountdown } from '@/lib/hooks/use-countdown';
 import { isRestartError, loginErrorMessage } from './login-errors';
 
 /**
@@ -79,17 +81,12 @@ export function MfaStep({
       </div>
 
       {!enrolled && enrol.error ? (
-        <div className="flex flex-col gap-3">
-          <InlineAlert tone="error">{loginErrorMessage(enrol.error)}</InlineAlert>
-          <div className="flex gap-3">
-            <Button variant="secondary" className="flex-1" onClick={() => startEnrol()}>
-              Try again
-            </Button>
-            <Button variant="secondary" className="flex-1" onClick={onRestart}>
-              Start again
-            </Button>
-          </div>
-        </div>
+        <EnrolFailure
+          key={enrol.submittedAt}
+          error={enrol.error}
+          onRetry={() => startEnrol()}
+          onRestart={onRestart}
+        />
       ) : null}
       {!enrolled && !enrol.error ? <Enrolment state={enrol} /> : null}
 
@@ -108,6 +105,34 @@ export function MfaStep({
         Verify and continue
       </Button>
     </form>
+  );
+}
+
+/**
+ * A failed enrolment. "Try again" is offered only for a failure a later try
+ * can fix (offline, 429, 503), and waits out `Retry-After` (API design 8.2);
+ * anything else can only start the sign-in again.
+ */
+function EnrolFailure({ error, onRetry, onRestart }: { error: Error; onRetry(): void; onRestart(): void }) {
+  const retryable = error instanceof ApiError && error.isRetryable;
+  const [until] = useState(() =>
+    error instanceof ApiError && error.retryAfterSeconds ? Date.now() + error.retryAfterSeconds * 1000 : null,
+  );
+  const wait = useCountdown(until);
+  return (
+    <div className="flex flex-col gap-3">
+      <InlineAlert tone="error">{loginErrorMessage(error)}</InlineAlert>
+      <div className="flex gap-3">
+        {retryable ? (
+          <Button variant="secondary" className="flex-1" onClick={onRetry} disabled={wait > 0}>
+            {wait > 0 ? `Try again in ${formatCountdown(wait)}` : 'Try again'}
+          </Button>
+        ) : null}
+        <Button variant="secondary" className="flex-1" onClick={onRestart}>
+          Start again
+        </Button>
+      </div>
+    </div>
   );
 }
 

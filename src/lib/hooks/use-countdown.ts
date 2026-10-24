@@ -2,22 +2,26 @@
 
 import { useEffect, useState } from 'react';
 
-/**
- * Whole seconds left until `until` (epoch ms), ticking once a second; 0 when
- * passed. A new `until` may read up to a second high until the next tick.
- */
+/** Whole seconds left until `until` (epoch ms), ticking once a second; 0 when passed. */
 export function useCountdown(until: number | null): number {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     if (until === null) return;
-    const timer = setInterval(() => {
+    const tick = () => {
       const current = Date.now();
       setNow(current);
       // Nothing changes after zero, so stop ticking.
       if (current >= until) clearInterval(timer);
-    }, 1000);
-    return () => clearInterval(timer);
+    };
+    // Start from the current time: a `now` left from an earlier countdown
+    // would show the wrong time for up to a second (re-review R-C7).
+    const first = setTimeout(tick, 0);
+    const timer = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
   }, [until]);
 
   if (until === null) return 0;

@@ -2,8 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { parseEnv } from './env';
 
 describe('parseEnv', () => {
+  it('needs the environment named, so a bare build fails (re-review R-C1)', () => {
+    expect(() => parseEnv({})).toThrow(/NEXT_PUBLIC_APP_ENV is required/);
+    expect(() => parseEnv({ NEXT_PUBLIC_API_BASE_URL: 'https://api.bravynix.in/v1' })).toThrow(
+      /NEXT_PUBLIC_APP_ENV is required/,
+    );
+  });
+
   it('defaults a local build to the local API', () => {
-    expect(parseEnv({})).toEqual({
+    expect(parseEnv({ NEXT_PUBLIC_APP_ENV: 'local' })).toEqual({
       NEXT_PUBLIC_APP_ENV: 'local',
       NEXT_PUBLIC_API_BASE_URL: 'http://localhost:3000/v1',
     });
@@ -21,7 +28,7 @@ describe('parseEnv', () => {
     [{ NEXT_PUBLIC_APP_ENV: 'production' }, /required/],
     [{ NEXT_PUBLIC_APP_ENV: 'production', NEXT_PUBLIC_API_BASE_URL: 'http://api.bravynix.in/v1' }, /https/],
     [{ NEXT_PUBLIC_APP_ENV: 'staging', NEXT_PUBLIC_API_BASE_URL: 'https://localhost:3000/v1' }, /not local/],
-    [{ NEXT_PUBLIC_API_BASE_URL: 'http://api.example.in/v1' }, /https unless/],
+    [{ NEXT_PUBLIC_APP_ENV: 'local', NEXT_PUBLIC_API_BASE_URL: 'http://api.example.in/v1' }, /https unless/],
   ])('refuses %j', (raw, message) => {
     expect(() => parseEnv(raw)).toThrow(message);
   });
