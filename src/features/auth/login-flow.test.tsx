@@ -104,6 +104,34 @@ describe('LoginFlow', () => {
     expect(replace).toHaveBeenCalledWith('/dashboard');
   });
 
+  it('offers Try again and Start again when enrolment fails (review C8)', async () => {
+    await reachCodeStep();
+    authApi.verifyOtp.mockResolvedValue({ mfaRequired: true, mfaToken: 'mfa-1', mfaEnrolled: false });
+    authApi.enrolMfa
+      .mockRejectedValueOnce(ApiError.network(new TypeError('Failed to fetch')))
+      .mockResolvedValueOnce({ setupUri: 'otpauth://totp/BravyNix?secret=ABC', secret: 'JBSW Y3DP' });
+
+    await typeCode('482017');
+    expect(await screen.findByText(/Can't reach the server/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start again' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('JBSW Y3DP')).toBeInTheDocument();
+    expect(authApi.enrolMfa).toHaveBeenCalledTimes(2);
+  });
+
+  it('starts again when the MFA token has expired', async () => {
+    await reachCodeStep();
+    authApi.verifyOtp.mockResolvedValue({ mfaRequired: true, mfaToken: 'mfa-2', mfaEnrolled: true });
+    authApi.verifyMfa.mockRejectedValue(new ApiError(401, 'MFA_TOKEN_EXPIRED', 'x', 'r'));
+    await typeCode('482017');
+    await screen.findByText('Enter the code from your authenticator app');
+    await typeCode('135790');
+    expect(await screen.findByText('This sign-in took too long. Start again.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Start again' }));
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+  });
+
   it('asks an enrolled Super Admin for the authenticator code only', async () => {
     await reachCodeStep();
     authApi.verifyOtp.mockResolvedValue({ mfaRequired: true, mfaToken: 'mfa-2', mfaEnrolled: true });

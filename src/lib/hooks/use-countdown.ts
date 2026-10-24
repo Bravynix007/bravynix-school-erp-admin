@@ -11,7 +11,12 @@ export function useCountdown(until: number | null): number {
 
   useEffect(() => {
     if (until === null) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const timer = setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      // Nothing changes after zero, so stop ticking.
+      if (current >= until) clearInterval(timer);
+    }, 1000);
     return () => clearInterval(timer);
   }, [until]);
 

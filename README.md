@@ -21,28 +21,30 @@ Run the backend (`bravynix-school-erp-backend`) with `docker compose up -d && np
 to sign in for real. The seeded Super Admin's email is in the backend's two-worlds seed; the
 code arrives in Mailpit at http://localhost:8025.
 
-| Script                 | What it does                                             |
-| ---------------------- | -------------------------------------------------------- |
-| `npm run dev`          | Dev server on port 3001 (Turbopack)                      |
-| `npm run build`        | Static export to `out/`                                  |
-| `npm start`            | Serves `out/` on port 3001                               |
-| `npm run lint`         | ESLint (Next core web vitals, TypeScript, project rules) |
-| `npm run typecheck`    | Generates typed routes, then `tsc --noEmit`              |
-| `npm test`             | Vitest unit and component tests (jsdom)                  |
-| `npm run test:e2e`     | Playwright against the built `out/`, API mocked per test |
-| `npm run format:check` | Prettier, with Tailwind class sorting                    |
+| Script                 | What it does                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| `npm run dev`          | Dev server on port 3001 (Turbopack)                                                      |
+| `npm run build`        | Static export to `out/`                                                                  |
+| `npm start`            | Serves `out/` on port 3001                                                               |
+| `npm run lint`         | ESLint (Next core web vitals, TypeScript, project rules)                                 |
+| `npm run typecheck`    | Generates typed routes, then `tsc --noEmit`                                              |
+| `npm test`             | Vitest unit and component tests (jsdom)                                                  |
+| `npm run test:e2e`     | Playwright in Chromium, Firefox and WebKit against the built `out/`, API mocked per test |
+| `npm run format:check` | Prettier, with Tailwind class sorting                                                    |
 
-If Chromium is already installed (as in Claude Code cloud sessions), point Playwright at it
-instead of downloading: `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e`.
+`npx playwright install chromium firefox webkit` fetches the browsers once. Where only Chromium
+is installed (as in Claude Code cloud sessions), point Playwright at it and run that project:
+`PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e -- --project=chromium`. CI
+runs all three.
 
 ## Configuration
 
 Read at build time and inlined into the bundle, so each environment gets its own build.
 
-| Variable                   | Example                          | Notes                                          |
-| -------------------------- | -------------------------------- | ---------------------------------------------- |
-| `NEXT_PUBLIC_API_BASE_URL` | `https://api.bravynix.in/v1`     | Must include `/v1`                             |
-| `NEXT_PUBLIC_APP_ENV`      | `local`, `staging`, `production` | Shows an environment badge unless `production` |
+| Variable                   | Example                          | Notes                                                                                                                                                                       |
+| -------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://api.bravynix.in/v1`     | Must include `/v1`. Required and `https` (never a local host) for staging and production builds, which fail otherwise; a local build defaults to `http://localhost:3000/v1` |
+| `NEXT_PUBLIC_APP_ENV`      | `local`, `staging`, `production` | Shows an environment badge unless `production`                                                                                                                              |
 
 Nothing secret belongs here: everything `NEXT_PUBLIC_*` ends up in the browser.
 

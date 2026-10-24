@@ -10,6 +10,7 @@ import { env } from '@/lib/env';
 export function TopBar() {
   const { signOut } = useSession();
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-line-subtle bg-surface px-6 lg:px-8">
       <div className="flex items-center gap-3">
@@ -20,22 +21,32 @@ export function TopBar() {
           </span>
         ) : null}
       </div>
-      <Button
-        variant="secondary"
-        size="sm"
-        loading={busy}
-        icon={<IconLogout size={16} aria-hidden="true" />}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            await signOut();
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        Log out
-      </Button>
+      <div className="flex items-center gap-3">
+        {failed ? (
+          <p role="alert" className="text-caption text-error">
+            Couldn&apos;t sign out. Check your connection and try again.
+          </p>
+        ) : null}
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={busy}
+          icon={<IconLogout size={16} aria-hidden="true" />}
+          onClick={async () => {
+            setBusy(true);
+            setFailed(false);
+            try {
+              await signOut();
+            } catch {
+              setFailed(true);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Log out
+        </Button>
+      </div>
     </header>
   );
 }

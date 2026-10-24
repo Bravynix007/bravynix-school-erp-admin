@@ -4,10 +4,14 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import type { SessionEndReason } from '@/lib/auth/session';
 
+/** One line per `reason` in API design 6.4. */
 const copy: Record<SessionEndReason, string> = {
   expired: 'Your session ended after 12 hours.',
+  signed_out: 'You signed out in another tab.',
   signed_out_elsewhere: 'You were signed out from another device.',
   blocked: 'This account is blocked.',
+  admin_revoked: 'Your access was changed by a Super Admin.',
+  email_changed: 'The email address for this account was changed. Sign in with the new address.',
   unknown: 'Your session has ended.',
 };
 

@@ -30,15 +30,19 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:cov
+      # A local build: it calls http://localhost:3000/v1. Deploys build again with
+      # NEXT_PUBLIC_APP_ENV and an https NEXT_PUBLIC_API_BASE_URL, or the build fails.
       - run: npm run build
+        env:
+          NEXT_PUBLIC_APP_ENV: local
       - uses: actions/upload-artifact@v4
         with:
-          name: console-static-export
+          name: console-static-export-local
           path: out/
           retention-days: 7
 
   e2e:
-    name: Browser tests (Playwright, Chromium)
+    name: Browser tests (Playwright, Chromium, Firefox, WebKit)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -50,7 +54,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run build
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4

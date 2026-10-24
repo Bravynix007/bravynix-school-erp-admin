@@ -25,6 +25,9 @@ export default defineConfig({
         launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined },
       },
     },
+    // Operators use Chrome, Edge, Firefox and Safari (QA strategy 3, 8).
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
     command: 'npx serve out -l 3001 --no-clipboard',

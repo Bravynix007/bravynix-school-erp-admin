@@ -11,7 +11,7 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/test/setup.ts'],
     env: {
-      NEXT_PUBLIC_API_BASE_URL: 'http://api.test/v1',
+      NEXT_PUBLIC_API_BASE_URL: 'http://localhost:3000/v1',
       NEXT_PUBLIC_APP_ENV: 'local',
     },
     coverage: {

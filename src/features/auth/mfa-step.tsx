@@ -78,8 +78,20 @@ export function MfaStep({
         ) : null}
       </div>
 
-      {!enrolled ? <Enrolment state={enrol} /> : null}
-      {enrol.error ? <InlineAlert tone="error">{loginErrorMessage(enrol.error)}</InlineAlert> : null}
+      {!enrolled && enrol.error ? (
+        <div className="flex flex-col gap-3">
+          <InlineAlert tone="error">{loginErrorMessage(enrol.error)}</InlineAlert>
+          <div className="flex gap-3">
+            <Button variant="secondary" className="flex-1" onClick={() => startEnrol()}>
+              Try again
+            </Button>
+            <Button variant="secondary" className="flex-1" onClick={onRestart}>
+              Start again
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {!enrolled && !enrol.error ? <Enrolment state={enrol} /> : null}
 
       <OtpInput
         label="Authenticator code"

@@ -36,7 +36,7 @@ export function loginErrorMessage(error: unknown): string {
       return "This account is blocked and can't access the console.";
     case 'CONSOLE_NOT_ALLOWED':
       return 'The console is for Super Admins only. Use the BravyNix app instead.';
-    // The two MFA codes are Proposed; API design 8 lists them when Identity lands.
+    // API design 6.2, 8.1.
     case 'MFA_INVALID':
       return 'Incorrect authenticator code. Check the time on your phone and try again.';
     case 'MFA_TOKEN_EXPIRED':

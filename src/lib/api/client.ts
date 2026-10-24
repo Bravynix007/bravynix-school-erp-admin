@@ -8,16 +8,8 @@ export const CONSOLE_CSRF_HEADER = { 'X-Requested-With': 'bravynix-console' } as
 
 const TIMEOUT_MS = 15_000;
 
-const ENVELOPE_KEYS = new Set([
-  'success',
-  'statusCode',
-  'code',
-  'message',
-  'data',
-  'meta',
-  'errors',
-  'requestId',
-]);
+/** Serialises refreshes across tabs: the refresh cookie is single use (API design 6.3). */
+const REFRESH_LOCK = 'bravynix-console-refresh';
 
 export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -26,12 +18,18 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   /** For the 7 operations that need one (API design 14). Reuse it on retry. */
   idempotencyKey?: string;
-  /** Skip the access token, e.g. for the OTP calls. */
+  /**
+   * Skip the access token, e.g. for the OTP and MFA calls. An anonymous call
+   * never refreshes or ends the session: its 401s belong to the sign-in flow.
+   */
   anonymous?: boolean;
   signal?: AbortSignal;
 }
 
 type Fetch = typeof fetch;
+
+/** `ok: false` only when the API refused the refresh with 401: the session is over. */
+export type RefreshResult = { ok: true } | { ok: false; error: ApiError };
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -57,12 +55,11 @@ function toApiError(response: Response, body: unknown): ApiError {
   const retryAfter = Number(response.headers.get('Retry-After'));
   if (isEnvelope(body)) {
     const { code, message, errors, requestId, data } = body;
-    // Error data such as `attemptsLeft` (API design 10.2) and extra envelope
-    // fields such as `reason` (6.4) both land in `details`.
-    const details = {
-      ...(typeof data === 'object' && data !== null && !Array.isArray(data) ? data : {}),
-      ...Object.fromEntries(Object.entries(body).filter(([key]) => !ENVELOPE_KEYS.has(key))),
-    };
+    // Error details such as `attemptsLeft` or `reason` come in `data` (API design 8).
+    const details =
+      typeof data === 'object' && data !== null && !Array.isArray(data)
+        ? (data as Record<string, unknown>)
+        : {};
     return new ApiError(
       response.status,
       code,
@@ -81,13 +78,19 @@ function toApiError(response: Response, body: unknown): ApiError {
   );
 }
 
+/** Runs `task` while holding a lock shared by every tab, where the browser has Web Locks. */
+async function withTabLock<T>(task: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
+  return locks ? await locks.request(REFRESH_LOCK, task) : task();
+}
+
 /**
  * The one way the console calls the API. It unwraps the envelope, turns
  * errors into `ApiError`, and on 401 TOKEN_EXPIRED refreshes the access
- * token once (single flight) and repeats the call (API design 8.2).
+ * token once and repeats the call (API design 8.2).
  */
 export class ApiClient {
-  private refreshing: Promise<boolean> | null = null;
+  private refreshing: Promise<RefreshResult> | null = null;
   private readonly fetchImpl: Fetch;
   private onSessionEnded: ((error: ApiError) => void) | undefined;
 
@@ -101,21 +104,21 @@ export class ApiClient {
   }
 
   async request<T>(path: string, options: RequestOptions = {}): Promise<ApiEnvelope<T>> {
+    const usedToken = tokenStore.get();
     try {
       return await this.send<T>(path, options);
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401 && error.code === 'TOKEN_EXPIRED') {
-        if (await this.refresh()) return this.send<T>(path, options);
-        const ended = new ApiError(401, 'SESSION_ENDED', error.message, error.requestId, [], {
-          reason: 'expired',
-        });
-        this.onSessionEnded?.(ended);
-        throw ended;
+      if (!(error instanceof ApiError) || options.anonymous) throw error;
+      if (error.status === 401 && error.code === 'TOKEN_EXPIRED') {
+        // Another call may have refreshed while this one was in flight.
+        const current = tokenStore.get();
+        if (current === null || current === usedToken) {
+          const result = await this.refresh();
+          if (!result.ok) this.endSession(result.error);
+        }
+        return this.retry<T>(path, options);
       }
-      if (error instanceof ApiError && error.isSessionEnded && !options.anonymous) {
-        tokenStore.clear();
-        this.onSessionEnded?.(error);
-      }
+      if (error.isSessionEnded) this.endSession(error);
       throw error;
     }
   }
@@ -126,30 +129,55 @@ export class ApiClient {
   }
 
   /**
-   * Exchanges the HttpOnly refresh cookie for a new access token. Concurrent
-   * callers share one request, because a refresh token is single use and a
-   * second use ends the session (API design 6.3).
+   * Exchanges the HttpOnly refresh cookie for a new access token. Resolves
+   * `ok: false` with the API's 401 when the session is over. A network
+   * failure, timeout or 5xx rejects with that `ApiError` and ends nothing:
+   * the cookie may still be good (API design 8.2).
+   *
+   * Calls in this tab share one request, and tabs take turns through a Web
+   * Lock, because a refresh token is single use and a second use ends the
+   * session (API design 6.3). A tab that waited sends the cookie the first
+   * tab's answer has just set.
    */
-  refresh(): Promise<boolean> {
-    this.refreshing ??= this.doRefresh().finally(() => {
+  refresh(): Promise<RefreshResult> {
+    this.refreshing ??= withTabLock(() => this.doRefresh()).finally(() => {
       this.refreshing = null;
     });
     return this.refreshing;
   }
 
-  private async doRefresh(): Promise<boolean> {
+  private async doRefresh(): Promise<RefreshResult> {
     try {
       const envelope = await this.send<{ accessToken: string }>('auth/refresh', {
         method: 'POST',
         anonymous: true,
         headers: CONSOLE_CSRF_HEADER,
       });
-      tokenStore.set(envelope.data?.accessToken ?? null);
-      return Boolean(envelope.data?.accessToken);
-    } catch {
+      const token = envelope.data?.accessToken;
+      if (!token) throw new ApiError(500, 'UNEXPECTED_RESPONSE', 'Something went wrong', envelope.requestId);
+      tokenStore.set(token);
+      return { ok: true };
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401) throw error;
       tokenStore.clear();
-      return false;
+      return { ok: false, error };
     }
+  }
+
+  /** The repeat after a refresh: any 401 now is final, and so is the session. */
+  private async retry<T>(path: string, options: RequestOptions): Promise<ApiEnvelope<T>> {
+    try {
+      return await this.send<T>(path, options);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) this.endSession(error);
+      throw error;
+    }
+  }
+
+  private endSession(error: ApiError): never {
+    tokenStore.clear();
+    this.onSessionEnded?.(error);
+    throw error;
   }
 
   private async send<T>(path: string, options: RequestOptions): Promise<ApiEnvelope<T>> {

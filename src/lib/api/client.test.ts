@@ -91,7 +91,7 @@ describe('ApiClient', () => {
     const fetch = fakeFetch(ok({ accessToken: 'a' }));
     const client = new ApiClient({ baseUrl: BASE, fetch });
     const results = await Promise.all([client.refresh(), client.refresh(), client.refresh()]);
-    expect(results).toEqual([true, true, true]);
+    expect(results).toEqual([{ ok: true }, { ok: true }, { ok: true }]);
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -101,18 +101,90 @@ describe('ApiClient', () => {
     const fetch = fakeFetch(fail(401, 'TOKEN_EXPIRED'), fail(401, 'REFRESH_TOKEN_INVALID'));
     const client = new ApiClient({ baseUrl: BASE, fetch, onSessionEnded });
 
-    await expect(client.data('me')).rejects.toMatchObject({ code: 'SESSION_ENDED' });
-    expect(onSessionEnded).toHaveBeenCalledWith(expect.objectContaining({ details: { reason: 'expired' } }));
+    await expect(client.data('me')).rejects.toMatchObject({ code: 'REFRESH_TOKEN_INVALID' });
+    expect(onSessionEnded).toHaveBeenCalledWith(expect.objectContaining({ code: 'REFRESH_TOKEN_INVALID' }));
     expect(tokenStore.get()).toBeNull();
+  });
+
+  it('keeps the session when the refresh cannot reach the API (review C1)', async () => {
+    tokenStore.set('old');
+    const onSessionEnded = vi.fn();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(fail(401, 'TOKEN_EXPIRED').body), { status: 401 }))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    const client = new ApiClient({ baseUrl: BASE, fetch, onSessionEnded });
+
+    await expect(client.data('me')).rejects.toMatchObject({ code: 'NETWORK_ERROR' });
+    expect(onSessionEnded).not.toHaveBeenCalled();
+    expect(tokenStore.get()).toBe('old');
+  });
+
+  it('rejects a refresh that fails with 5xx instead of reporting the session over', async () => {
+    const client = new ApiClient({ baseUrl: BASE, fetch: fakeFetch(fail(503, 'SERVICE_UNAVAILABLE')) });
+    await expect(client.refresh()).rejects.toMatchObject({ status: 503 });
+  });
+
+  it('ends the session when the repeat after a refresh is refused (review C5)', async () => {
+    tokenStore.set('old');
+    const onSessionEnded = vi.fn();
+    const fetch = fakeFetch(
+      fail(401, 'TOKEN_EXPIRED'),
+      ok({ accessToken: 'new' }),
+      fail(401, 'SESSION_ENDED', { data: { reason: 'blocked' } }),
+    );
+    const client = new ApiClient({ baseUrl: BASE, fetch, onSessionEnded });
+
+    await expect(client.data('me')).rejects.toMatchObject({ code: 'SESSION_ENDED' });
+    expect(onSessionEnded).toHaveBeenCalledTimes(1);
+    expect(tokenStore.get()).toBeNull();
+  });
+
+  it('never refreshes for an anonymous call (review C6)', async () => {
+    tokenStore.set('t');
+    const onSessionEnded = vi.fn();
+    const fetch = fakeFetch(fail(401, 'TOKEN_EXPIRED'));
+    const client = new ApiClient({ baseUrl: BASE, fetch, onSessionEnded });
+
+    await expect(client.data('auth/mfa/verify', { method: 'POST', anonymous: true })).rejects.toMatchObject({
+      code: 'TOKEN_EXPIRED',
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(onSessionEnded).not.toHaveBeenCalled();
+    expect(tokenStore.get()).toBe('t');
+  });
+
+  it('retries without refreshing when another call already replaced the token (review C9)', async () => {
+    tokenStore.set('old');
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const fetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      const auth = (init?.headers as Record<string, string>).Authorization;
+      if (auth === 'Bearer old') {
+        await gate;
+        return new Response(JSON.stringify(fail(401, 'TOKEN_EXPIRED').body), { status: 401 });
+      }
+      return new Response(JSON.stringify(ok({ id: 1 }).body), { status: 200 });
+    });
+    const client = new ApiClient({ baseUrl: BASE, fetch });
+
+    const pending = client.data('me');
+    tokenStore.set('new');
+    release();
+    await expect(pending).resolves.toEqual({ id: 1 });
+    expect(fetch.mock.calls.map(([url]) => String(url))).toEqual([`${BASE}/me`, `${BASE}/me`]);
   });
 
   it('ends the session on a revoked token, but not for anonymous calls', async () => {
     tokenStore.set('t');
     const onSessionEnded = vi.fn();
-    const fetch = fakeFetch(fail(401, 'TOKEN_REVOKED', { reason: 'logout_all' }), fail(401, 'OTP_INVALID'));
+    const fetch = fakeFetch(
+      fail(401, 'SESSION_ENDED', { data: { reason: 'logout_all' } }),
+      fail(401, 'OTP_INVALID'),
+    );
     const client = new ApiClient({ baseUrl: BASE, fetch, onSessionEnded });
 
-    await expect(client.data('me')).rejects.toMatchObject({ code: 'TOKEN_REVOKED' });
+    await expect(client.data('me')).rejects.toMatchObject({ code: 'SESSION_ENDED' });
     expect(onSessionEnded).toHaveBeenCalledTimes(1);
     expect(tokenStore.get()).toBeNull();
 
