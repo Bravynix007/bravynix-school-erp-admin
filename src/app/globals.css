@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+/*
+ * "Quiet Ledger" design tokens from design/super-admin-console/DESIGN.md
+ * (sections 4-10). Components use the semantic names only, never raw hex, so
+ * a dark theme can be added later without renaming (DESIGN.md 4).
+ */
+:root {
+  --color-bg-canvas: #f6f5f1;
+  --color-bg-surface: #ffffff;
+  --color-bg-sunken: #efede7;
+  --color-bg-frame: #16222c;
+  --color-bg-frame-active: #22313c;
+  --color-bg-row-hover: #faf9f6;
+
+  --color-text-primary: #16222c;
+  --color-text-secondary: #56626c;
+  --color-text-tertiary: #646e77;
+  --color-text-on-frame: #c7cdd2;
+  --color-text-on-frame-muted: #8c969e;
+  --color-text-on-primary: #ffffff;
+  --color-text-disabled: #9aa3aa;
+
+  --color-border-default: #e0ddd5;
+  --color-border-subtle: #ece9e2;
+  --color-border-strong: #c9c5bb;
+  --color-border-focus: #0e5e5a;
+
+  --color-action-primary: #0e5e5a;
+  --color-action-primary-hover: #0b4b48;
+  --color-action-primary-tint: #e3efec;
+  --color-action-danger: #b3261e;
+
+  --color-signal-support: #e8b04a;
+  --color-signal-support-text: #8a5a06;
+
+  --color-status-success-fg: #1e7347;
+  --color-status-success-bg: #e6f2ea;
+  --color-status-warning-fg: #9a5407;
+  --color-status-warning-bg: #fbefdf;
+  --color-status-error-fg: #b3261e;
+  --color-status-error-bg: #fbe9e8;
+  --color-status-info-fg: #2b5a94;
+  --color-status-info-bg: #e7eef7;
+  --color-status-neutral-fg: #56626c;
+  --color-status-neutral-bg: #efede7;
+
+  --color-overlay: #16222c99;
+}
+
+@theme inline {
+  --color-canvas: var(--color-bg-canvas);
+  --color-surface: var(--color-bg-surface);
+  --color-sunken: var(--color-bg-sunken);
+  --color-frame: var(--color-bg-frame);
+  --color-frame-active: var(--color-bg-frame-active);
+  --color-row-hover: var(--color-bg-row-hover);
+
+  --color-ink: var(--color-text-primary);
+  --color-ink-secondary: var(--color-text-secondary);
+  --color-ink-tertiary: var(--color-text-tertiary);
+  --color-on-frame: var(--color-text-on-frame);
+  --color-on-frame-muted: var(--color-text-on-frame-muted);
+  --color-on-primary: var(--color-text-on-primary);
+  --color-disabled: var(--color-text-disabled);
+
+  --color-line: var(--color-border-default);
+  --color-line-subtle: var(--color-border-subtle);
+  --color-line-strong: var(--color-border-strong);
+  --color-focus: var(--color-border-focus);
+
+  --color-primary: var(--color-action-primary);
+  --color-primary-hover: var(--color-action-primary-hover);
+  --color-primary-tint: var(--color-action-primary-tint);
+  --color-danger: var(--color-action-danger);
+  --color-support: var(--color-signal-support);
+  --color-support-text: var(--color-signal-support-text);
+
+  --color-success: var(--color-status-success-fg);
+  --color-success-bg: var(--color-status-success-bg);
+  --color-warning: var(--color-status-warning-fg);
+  --color-warning-bg: var(--color-status-warning-bg);
+  --color-error: var(--color-status-error-fg);
+  --color-error-bg: var(--color-status-error-bg);
+  --color-info: var(--color-status-info-fg);
+  --color-info-bg: var(--color-status-info-bg);
+  --color-neutral: var(--color-status-neutral-fg);
+  --color-neutral-bg: var(--color-status-neutral-bg);
+
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Type scale (DESIGN.md 6): size / line height. */
+  --text-display: 32px;
+  --text-display--line-height: 40px;
+  --text-h1: 24px;
+  --text-h1--line-height: 32px;
+  --text-h2: 18px;
+  --text-h2--line-height: 26px;
+  --text-h3: 15px;
+  --text-h3--line-height: 22px;
+  --text-body: 14px;
+  --text-body--line-height: 22px;
+  --text-label: 13px;
+  --text-label--line-height: 18px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-overline: 11px;
+  --text-overline--line-height: 16px;
+
+  /* Radius and shadow (DESIGN.md 10). */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-sm: 0 1px 2px rgba(22, 34, 44, 0.06);
+  --shadow-md: 0 8px 24px rgba(22, 34, 44, 0.1);
+  --shadow-lg: 0 24px 48px rgba(22, 34, 44, 0.16);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background: var(--color-bg-canvas);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Focus: 2 px Pine Teal ring with a 2 px white offset (DESIGN.md 16). */
+  :focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+
+  .on-frame :focus-visible {
+    outline-color: var(--color-signal-support);
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
