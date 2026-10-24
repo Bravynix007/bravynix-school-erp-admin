@@ -86,6 +86,23 @@ export function reasonOf(error: ApiError): SessionEndReason {
 }
 
 /**
+ * The state after another tab reports the session over. Only a signed-in tab
+ * shows "Session ended"; a tab on the sign-in page stays there, and one still
+ * checking gets its own answer from the API.
+ */
+export function endedElsewhere(current: SessionState, reason: SessionEndReason): SessionState {
+  switch (current.status) {
+    case 'signed-in':
+      return { status: 'ended', reason };
+    case 'checking':
+    case 'ended':
+      return current;
+    default:
+      return { status: 'signed-out' };
+  }
+}
+
+/**
  * Holds the console session. On load it asks for a fresh access token with
  * the HttpOnly refresh cookie; a 12-hour console session cannot be extended
  * (API design 6.1), so expiry ends in the "Session ended" card. Whenever the
@@ -106,7 +123,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (message.type === 'signed-out') {
         setState({ status: 'signed-out' });
       } else if (message.type === 'ended') {
-        setState({ status: 'ended', reason: isReason(message.reason) ? message.reason : 'unknown' });
+        const reason = isReason(message.reason) ? message.reason : 'unknown';
+        setState((current) => endedElsewhere(current, reason));
       } else {
         // Someone signed in elsewhere: check whose session the cookie holds now.
         setState({ status: 'checking' });
@@ -134,7 +152,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let active = true;
     api.refresh().then(
       (result) => {
-        if (active) setState(result.ok ? { status: 'signed-in' } : { status: 'signed-out' });
+        if (!active) return;
+        if (result.ok) {
+          setState({ status: 'signed-in' });
+          return;
+        }
+        setState({ status: 'signed-out' });
+        // Every tab shares the refused cookie, so the session is over in all of them.
+        channel.current?.post({ type: 'ended', reason: reasonOf(result.error) });
       },
       (error: unknown) => {
         const retryAfterSeconds = error instanceof ApiError ? error.retryAfterSeconds : null;

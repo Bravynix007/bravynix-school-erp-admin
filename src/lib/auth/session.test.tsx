@@ -48,6 +48,10 @@ function renderSession() {
 }
 
 const networkError = () => ApiError.network(new TypeError('Failed to fetch'));
+const refused = (code = 'REFRESH_TOKEN_INVALID') => ({
+  ok: false,
+  error: new ApiError(401, code, 'Refused', null, [], {}),
+});
 
 describe('SessionProvider', () => {
   beforeEach(() => {
@@ -174,13 +178,29 @@ describe('SessionProvider across tabs (re-review R-C2)', () => {
   });
 
   it('checks the cookie again when someone signs in in another tab', async () => {
-    api.refresh.mockResolvedValueOnce({ ok: false }).mockResolvedValueOnce({ ok: true });
+    api.refresh.mockResolvedValueOnce(refused()).mockResolvedValueOnce({ ok: true });
     renderSession();
     await screen.findByText('signed-out');
 
     otherTab.postMessage({ type: 'signed-in' });
     expect(await screen.findByText('signed-in')).toBeInTheDocument();
     expect(api.refresh).toHaveBeenCalledTimes(2);
+  });
+
+  it('tells the other tabs when the cookie is refused on load (final pass)', async () => {
+    api.refresh.mockResolvedValue(refused('REFRESH_TOKEN_REUSED'));
+    renderSession();
+    expect(await screen.findByText('signed-out')).toBeInTheDocument();
+    await waitFor(() => expect(heard).toContainEqual({ type: 'ended', reason: 'signed_out_elsewhere' }));
+  });
+
+  it('stays on the sign-in page when the session ends in another tab', async () => {
+    api.refresh.mockResolvedValue(refused());
+    renderSession();
+    await screen.findByText('signed-out');
+    otherTab.postMessage({ type: 'ended', reason: 'expired' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.getByText('signed-out')).toBeInTheDocument();
   });
 
   it('ignores messages it does not understand', async () => {
