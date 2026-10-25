@@ -70,7 +70,7 @@ export function Stepper({
                 <span className="pt-1">
                   <span className="sr-only">
                     Step {index + 1}
-                    {active ? ', current' : ''}:{' '}
+                    {done ? ', done' : active ? ', current' : ''}:{' '}
                   </span>
                   {text}
                 </span>

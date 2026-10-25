@@ -23,6 +23,17 @@ import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { TextField } from '@/components/ui/text-field';
 import { Textarea } from '@/components/ui/textarea';
 import { Timeline } from '@/components/ui/timeline';
+import { AuditDiff } from '@/components/ui/audit-diff';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Dialog } from '@/components/ui/dialog';
+import { ErrorBanner } from '@/components/ui/error-banner';
+import { LanguageSelect, type LanguageCode } from '@/components/ui/language-select';
+import { PipelineCard } from '@/components/ui/progress';
+import { SideSheet } from '@/components/ui/side-sheet';
+import { Stepper } from '@/components/ui/stepper';
+import { SupportModeBar } from '@/components/ui/support-mode-bar';
+import { useToast } from '@/components/ui/toast';
+import { AccessDenied, RecordNotFound } from '@/components/shell/status-panels';
 import { PageHeader } from '@/components/shell/page-header';
 import { env } from '@/lib/env';
 import { formatMoney, formatMoneyCompact } from '@/lib/format/money';
@@ -85,6 +96,11 @@ function Gallery() {
   const [tab, setTab] = useState('owners');
   const [fee, setFee] = useState('124500.50');
   const [plan, setPlan] = useState('');
+  const [dialog, setDialog] = useState<'confirm' | 'danger' | 'form' | 'sheet' | null>(null);
+  const [step, setStep] = useState(1);
+  const [language, setLanguage] = useState<LanguageCode>('en');
+  const [expiresAt] = useState(() => new Date(Date.now() + 42 * 60 * 1000).toISOString());
+  const toast = useToast();
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -330,6 +346,176 @@ function Gallery() {
               updatedAt="2026-10-23T04:45:00.000Z"
             />
           </div>
+        </div>
+      </Section>
+
+      <Section id="g-overlays" title="Dialogs, side sheet and toasts">
+        <div className="flex flex-wrap gap-3">
+          <Button variant="secondary" onClick={() => setDialog('confirm')}>
+            Open confirm dialog
+          </Button>
+          <Button variant="secondary" onClick={() => setDialog('danger')}>
+            Open danger dialog
+          </Button>
+          <Button variant="secondary" onClick={() => setDialog('form')}>
+            Open form dialog
+          </Button>
+          <Button variant="secondary" onClick={() => setDialog('sheet')}>
+            Open side sheet
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              toast.success('Due BNX/FY2026-27/0007 raised', { action: { label: 'View', href: '/dues' } })
+            }
+          >
+            Show success toast
+          </Button>
+          <Button variant="secondary" onClick={() => toast.error('Could not save. Check your connection.')}>
+            Show error toast
+          </Button>
+        </div>
+        <ConfirmDialog
+          open={dialog === 'confirm'}
+          title="Pause this Institution?"
+          consequence="Staff and parents lose access until you resume it."
+          confirmLabel="Pause Institution"
+          onConfirm={() => setDialog(null)}
+          onCancel={() => setDialog(null)}
+        />
+        <ConfirmDialog
+          open={dialog === 'danger'}
+          title="Block this user?"
+          consequence="They are signed out at once and cannot sign in again."
+          confirmLabel="Block user"
+          tone="danger"
+          onConfirm={() => setDialog(null)}
+          onCancel={() => setDialog(null)}
+        />
+        <Dialog
+          open={dialog === 'form'}
+          onClose={() => setDialog(null)}
+          title="Set a rate"
+          description="The rate applies from the date you choose."
+          size="form"
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setDialog(null)}>
+                Cancel
+              </Button>
+              <Button onClick={() => setDialog(null)}>Save rate</Button>
+            </>
+          }
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <MoneyField label="Rate per seat (₹)" value={fee} onValueChange={setFee} />
+            <TextField label="From" placeholder="DD-MM-YYYY" />
+          </div>
+        </Dialog>
+        <SideSheet
+          open={dialog === 'sheet'}
+          onClose={() => setDialog(null)}
+          title="Green Valley School"
+          status={<StatusChip tone="success" label="Active" />}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setDialog(null)}>
+                Close
+              </Button>
+              <Button onClick={() => setDialog(null)}>Edit</Button>
+            </>
+          }
+        >
+          <KeyValueList
+            items={[
+              { label: 'Society', value: 'Sri Vidya Educational Society' },
+              { label: 'Code', value: <Mono>INS-001</Mono> },
+              { label: 'Plan', value: 'Plus' },
+              { label: 'Seats', value: <span className="tabular">420</span> },
+            ]}
+          />
+          <div className="mt-8">
+            <StampBlock
+              createdBy={actor('A. Rao')}
+              createdAt="2026-09-02T06:10:00.000Z"
+              updatedBy={actor('K. Menon')}
+              updatedAt="2026-10-23T04:45:00.000Z"
+            />
+          </div>
+        </SideSheet>
+      </Section>
+
+      <Section id="g-wizard" title="Stepper and banners">
+        <Stepper
+          label="Onboarding"
+          current={step}
+          onStepClick={setStep}
+          steps={[
+            { key: 'society', label: 'Society' },
+            { key: 'institution', label: 'Institution' },
+            { key: 'owner', label: 'Owner and plan' },
+          ]}
+        />
+        <div className="mt-3 flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setStep((n) => Math.max(0, n - 1))}>
+            Back
+          </Button>
+          <Button size="sm" onClick={() => setStep((n) => Math.min(2, n + 1))}>
+            Save and continue
+          </Button>
+        </div>
+        <div className="mt-6 flex flex-col gap-3">
+          <ErrorBanner
+            message="This Institution has no rate on the period start. Set a rate first."
+            code="NO_RATE_IN_FORCE"
+            requestId="req_5d21"
+            action={<Button size="sm">Set rate</Button>}
+          />
+          <ErrorBanner
+            tone="warning"
+            message="Someone changed this record while you were editing. Reload to see their changes."
+            code="VERSION_CONFLICT"
+            action={
+              <Button size="sm" variant="secondary">
+                Reload
+              </Button>
+            }
+          />
+        </div>
+      </Section>
+
+      <Section id="g-ops" title="Pipeline, audit diff, language and support mode">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <PipelineCard
+            title="Month-end run"
+            stages={[
+              { key: 'a', label: 'Collect usage', state: 'done' },
+              { key: 'b', label: 'Raise dues', state: 'active', detail: '12 of 47 Institutions' },
+              { key: 'c', label: 'Send reminders', state: 'pending' },
+            ]}
+          />
+          <AuditDiff
+            caption="Changes in this entry"
+            changes={[
+              { field: 'Plan', before: 'Basic', after: 'Plus' },
+              { field: 'Seats', before: '300', after: '420' },
+              { field: 'Notes', before: null, after: 'Upgraded after the audit' },
+            ]}
+          />
+        </div>
+        <div className="mt-6 flex items-center gap-3">
+          <LanguageSelect value={language} onChange={setLanguage} />
+        </div>
+        <div className="mt-6 overflow-clip rounded-lg border border-line">
+          <SupportModeBar
+            scope="Green Valley School"
+            expiresAt={expiresAt}
+            onExit={() => toast.success('Session ended')}
+          />
+        </div>
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <AccessDenied />
+          <RecordNotFound listHref="/institutions" listLabel="Institutions" />
         </div>
       </Section>
 
