@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from 'react';
 import { FullPageSpinner } from '@/components/shell/full-page-spinner';
 import { ServerUnreachable } from '@/components/shell/server-unreachable';
 import { SessionEnded } from '@/components/shell/session-ended';
+import { OfflineBand } from '@/components/ui/offline-band';
 import { Sidebar } from '@/components/shell/sidebar';
 import { TopBar } from '@/components/shell/top-bar';
 import { useSession } from '@/lib/auth/session';
@@ -30,6 +31,7 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
+        <OfflineBand />
         <TopBar />
         <main
           id="content"

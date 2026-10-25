@@ -12,11 +12,12 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
+  // The transparent border keeps the button's shape in forced colours, where backgrounds are dropped.
   primary:
-    'bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-hover active:shadow-[inset_0_1px_0_rgba(0,0,0,0.2)]',
+    'border border-transparent bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-hover active:shadow-[inset_0_1px_0_rgba(0,0,0,0.2)]',
   secondary: 'bg-surface text-ink border border-line hover:border-line-strong hover:bg-sunken',
   tertiary: 'bg-transparent text-primary hover:underline px-0',
-  danger: 'bg-danger text-on-primary hover:brightness-95',
+  danger: 'border border-transparent bg-danger text-on-primary hover:brightness-95',
 };
 
 /** Buttons per DESIGN.md 12. One primary per view; danger only inside confirm dialogs. */
