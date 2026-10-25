@@ -98,7 +98,7 @@ export function OtpInput({ value, onChange, onComplete, label, error, disabled, 
             className={cn(
               'h-12 w-11 rounded-md border bg-surface text-center text-h2 font-semibold text-ink tabular outline-none',
               'focus:border-focus focus:ring-2 focus:ring-focus/30',
-              error ? 'border-error' : 'border-line hover:border-line-strong',
+              error ? 'border-error' : 'border-field hover:border-ink-secondary',
             )}
           />
         ))}
