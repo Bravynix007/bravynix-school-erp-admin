@@ -240,7 +240,7 @@ function SortControl<Row>({
         onChange={(event) => {
           if (event.target.value) onSort(event.target.value);
         }}
-        className="h-10 min-w-0 flex-1 rounded-md border border-field bg-surface px-3 text-label text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="h-11 min-w-0 flex-1 rounded-md border border-field bg-surface px-3 text-label text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         {sort ? null : (
           <option value="" disabled>
@@ -258,7 +258,8 @@ function SortControl<Row>({
           type="button"
           onClick={() => onSort(sort.key)}
           aria-label={`Sorted ${sort.direction === 'asc' ? 'ascending' : 'descending'}. Switch to ${next}`}
-          className="inline-flex size-10 items-center justify-center rounded-md border border-field bg-surface text-ink"
+          title={`Switch to ${next}`}
+          className="inline-flex size-11 items-center justify-center rounded-md border border-field bg-surface text-ink"
         >
           {sort.direction === 'asc' ? (
             <IconArrowUp size={16} aria-hidden="true" />
