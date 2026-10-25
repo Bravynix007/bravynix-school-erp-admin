@@ -23,14 +23,16 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
         className="mt-0.5 size-5 shrink-0 cursor-pointer accent-primary disabled:cursor-not-allowed"
         {...rest}
       />
-      <label htmlFor={inputId} className="cursor-pointer text-body text-ink">
-        {label}
+      <div className="min-w-0">
+        <label htmlFor={inputId} className="cursor-pointer text-body text-ink">
+          {label}
+        </label>
         {hint ? (
-          <span id={`${inputId}-hint`} className="block text-caption text-ink-tertiary">
+          <p id={`${inputId}-hint`} className="text-caption text-ink-tertiary">
             {hint}
-          </span>
+          </p>
         ) : null}
-      </label>
+      </div>
     </div>
   );
 });

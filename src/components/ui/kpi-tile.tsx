@@ -23,12 +23,15 @@ export function KpiTile({
   const body = (
     <>
       <p className="text-overline font-semibold tracking-[0.06em] text-ink-secondary uppercase">{label}</p>
-      <p
-        title={exact}
-        aria-label={exact ? `${value}, ${exact}` : undefined}
-        className="mt-2 text-display font-semibold tracking-[-0.01em] text-ink tabular"
-      >
-        {value}
+      <p title={exact} className="mt-2 text-display font-semibold tracking-[-0.01em] text-ink tabular">
+        {exact ? (
+          <>
+            <span aria-hidden="true">{value}</span>
+            <span className="sr-only">{exact}</span>
+          </>
+        ) : (
+          value
+        )}
       </p>
       {caption ? <p className="mt-1 text-caption text-ink-secondary">{caption}</p> : null}
     </>

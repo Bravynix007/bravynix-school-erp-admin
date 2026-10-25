@@ -1,6 +1,6 @@
 import { forwardRef, type TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
-import { Field, fieldBox } from './field';
+import { Field, fieldBox, joinIds } from './field';
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
@@ -10,7 +10,17 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
-  { label, error, hint, requiredMark, id, className, rows = 4, ...rest },
+  {
+    label,
+    error,
+    hint,
+    requiredMark,
+    id,
+    className,
+    rows = 4,
+    'aria-describedby': extraDescription,
+    ...rest
+  },
   ref,
 ) {
   return (
@@ -22,7 +32,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
             id={control.id}
             rows={rows}
             aria-invalid={control.invalid}
-            aria-describedby={control.describedBy}
+            aria-required={control.required}
+            aria-describedby={joinIds(control.describedBy, extraDescription)}
             className="min-h-20 w-full resize-y rounded-md bg-transparent px-3 py-2 text-body text-ink outline-none placeholder:text-ink-tertiary"
             {...rest}
           />

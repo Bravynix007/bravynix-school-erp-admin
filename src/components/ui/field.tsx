@@ -26,6 +26,7 @@ export interface FieldProps {
     id: string;
     describedBy: string | undefined;
     invalid: true | undefined;
+    required: true | undefined;
   }) => ReactNode;
 }
 
@@ -40,7 +41,12 @@ export function Field({ label, error, hint, requiredMark, hideLabel, id, classNa
         {label}
         {requiredMark ? <span className="ml-1.5 text-caption text-ink-tertiary">Required</span> : null}
       </label>
-      {children({ id: controlId, describedBy, invalid: error ? true : undefined })}
+      {children({
+        id: controlId,
+        describedBy,
+        invalid: error ? true : undefined,
+        required: requiredMark ? true : undefined,
+      })}
       {error ? (
         <p id={`${controlId}-error`} role="alert" className="flex items-center gap-1 text-caption text-error">
           <IconAlertCircle size={14} aria-hidden="true" />
@@ -53,4 +59,10 @@ export function Field({ label, error, hint, requiredMark, hideLabel, id, classNa
       ) : null}
     </div>
   );
+}
+
+/** The control's own `aria-describedby`, if the caller passed one, joined after the hint or error link. */
+export function joinIds(...ids: (string | undefined)[]): string | undefined {
+  const joined = ids.filter(Boolean).join(' ');
+  return joined || undefined;
 }

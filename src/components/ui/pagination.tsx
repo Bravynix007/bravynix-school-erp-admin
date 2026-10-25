@@ -29,7 +29,7 @@ export function Pagination({
           variant="secondary"
           size="sm"
           icon={<IconChevronLeft size={16} aria-hidden="true" />}
-          disabled={page <= 1}
+          aria-disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
         >
           Previous
@@ -40,7 +40,7 @@ export function Pagination({
         <Button
           variant="secondary"
           size="sm"
-          disabled={page >= pageCount}
+          aria-disabled={page >= pageCount}
           onClick={() => onPageChange(page + 1)}
         >
           Next

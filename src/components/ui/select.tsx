@@ -1,7 +1,7 @@
 import { forwardRef, type SelectHTMLAttributes } from 'react';
 import { IconChevronDown } from '@tabler/icons-react';
 import { cn } from '@/lib/cn';
-import { Field, fieldBox } from './field';
+import { Field, fieldBox, joinIds } from './field';
 
 export interface SelectOption {
   value: string;
@@ -21,7 +21,18 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 /** A native select: the platform list is keyboard and screen reader complete (DESIGN.md 12). */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { label, options, placeholder, error, hint, requiredMark, id, className, ...rest },
+  {
+    label,
+    options,
+    placeholder,
+    error,
+    hint,
+    requiredMark,
+    id,
+    className,
+    'aria-describedby': extraDescription,
+    ...rest
+  },
   ref,
 ) {
   return (
@@ -32,7 +43,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
             ref={ref}
             id={control.id}
             aria-invalid={control.invalid}
-            aria-describedby={control.describedBy}
+            aria-required={control.required}
+            aria-describedby={joinIds(control.describedBy, extraDescription)}
             className="h-full w-full cursor-pointer appearance-none rounded-md bg-transparent pr-9 pl-3 text-body text-ink outline-none disabled:cursor-not-allowed disabled:text-disabled"
             {...rest}
           >
