@@ -88,8 +88,8 @@ e2e/                      Playwright specs and API mocks
   envelope, maps errors to `ApiError`, refreshes once on `TOKEN_EXPIRED`, and sets the request
   id. Branch on `error.code`, never on `message`.
 - **Input outlines use `border-field` (`#80878D`, 3.7:1 on white; WCAG 1.4.11 asks for 3:1), not the
-  decorative `border-default` the DESIGN.md components table lists (about 1.4:1).** Raise with the design
-  owner if DESIGN.md should change.
+  Stone 300 outline DESIGN.md section 12 lists (`#C9C5BB`, about 1.7:1).** Raise with the design owner if
+  DESIGN.md should change.
 - **Design tokens only** (DESIGN.md, "Quiet Ledger"). Colours, type sizes, radius and shadows
   come from `src/app/globals.css`; no hex values in components. One primary button per view.
   Status chips use the fixed `statusTone` mapping.

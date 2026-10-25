@@ -30,7 +30,7 @@
   --color-border-subtle: #ece9e2;
   --color-border-strong: #c9c5bb;
   --color-border-focus: #0e5e5a;
-  /* Input outline: 3.7:1 on white, WCAG 1.4.11 asks for 3:1 (DESIGN.md 12 uses default border, about 1.4:1). */
+  /* Input outline: 3.7:1 on white, WCAG 1.4.11 asks for 3:1 (DESIGN.md 12 lists Stone 300, about 1.7:1). */
   --color-border-field: #80878d;
 
   --color-action-primary: #0e5e5a;
