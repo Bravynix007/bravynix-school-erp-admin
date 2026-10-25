@@ -1,4 +1,5 @@
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { useEffect, useRef } from 'react';
 import { Button } from './button';
 
 /** Page mode, 20 per page (DESIGN.md 9). Shows the range, never only arrows. */
@@ -51,7 +52,11 @@ export function Pagination({
   );
 }
 
-/** Cursor mode: the API gives no total, so only what is on screen is counted. */
+/**
+ * Cursor mode: the API gives no total, so only what is on screen is counted.
+ * When the last page arrives the button turns into "That is all of them"; if
+ * the button had focus, focus moves to that line so it is not lost (WCAG 2.4.3).
+ */
 export function LoadMore({
   shown,
   noun,
@@ -65,17 +70,41 @@ export function LoadMore({
   loading?: boolean;
   onLoadMore: () => void;
 }) {
+  const buttonFocused = useRef(false);
+  const endRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (!hasMore && buttonFocused.current) {
+      buttonFocused.current = false;
+      endRef.current?.focus();
+    }
+  }, [hasMore]);
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
       <p className="text-caption text-ink-secondary tabular" aria-live="polite">
         Showing {shown} {noun}
       </p>
       {hasMore ? (
-        <Button variant="secondary" size="sm" loading={loading} onClick={onLoadMore}>
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={loading}
+          onClick={onLoadMore}
+          onFocus={() => {
+            buttonFocused.current = true;
+          }}
+          onBlur={() => {
+            // Unmounting does not blur in React, so a blur here is the person moving on.
+            buttonFocused.current = false;
+          }}
+        >
           Load more
         </Button>
       ) : (
-        <p className="text-caption text-ink-tertiary">That is all of them</p>
+        <p ref={endRef} tabIndex={-1} className="rounded-sm text-caption text-ink-tertiary">
+          That is all of them
+        </p>
       )}
     </div>
   );

@@ -8,15 +8,15 @@ export function Switch({
   onChange,
   label,
   hideLabel,
-  labelClassName,
+  shortLabel,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: string;
   /** Keep the label for assistive technology and a tooltip only. */
   hideLabel?: boolean;
-  /** Classes for the visible label, e.g. `max-md:sr-only` to keep only the switch on a narrow screen. */
-  labelClassName?: string;
+  /** A shorter visible label for narrow screens. It must be part of `label`'s words, so the name contains the visible text. */
+  shortLabel?: string;
 }) {
   return (
     <button
@@ -42,7 +42,17 @@ export function Switch({
           )}
         />
       </span>
-      {hideLabel ? null : <span className={labelClassName}>{label}</span>}
+      {hideLabel ? null : shortLabel ? (
+        <>
+          <span className="max-lg:hidden">{label}</span>
+          <span aria-hidden="true" className="lg:hidden">
+            {shortLabel}
+          </span>
+          <span className="sr-only lg:hidden">{label}</span>
+        </>
+      ) : (
+        label
+      )}
     </button>
   );
 }

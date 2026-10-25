@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Checkbox } from './checkbox';
 import { DataTable, type Column } from './data-table';
 import { FilterBar } from './filter-bar';
+import { LoadMore } from './pagination';
 import { Select } from './select';
 import { Switch } from './switch';
 import { Tabs } from './tabs';
@@ -239,5 +240,40 @@ describe('Tabs', () => {
   it('leaves the first tab reachable when the value matches none', () => {
     render(<Tabs idPrefix="t" label="x" items={items} value="missing" onChange={() => {}} />);
     expect(screen.getByRole('tab', { name: /Owners/ })).toHaveAttribute('tabindex', '0');
+  });
+});
+
+describe('LoadMore focus', () => {
+  it('moves focus to the end line when the last page arrives under the focused button', async () => {
+    function Harness() {
+      const [shown, setShown] = useState(10);
+      return <LoadMore shown={shown} noun="entries" hasMore={shown < 20} onLoadMore={() => setShown(20)} />;
+    }
+    render(<Harness />);
+    const button = screen.getByRole('button', { name: 'Load more' });
+    button.focus();
+    await userEvent.click(button);
+    expect(screen.getByText('That is all of them')).toHaveFocus();
+  });
+
+  it('leaves focus alone when the button was not the focused control', () => {
+    const { rerender } = render(<LoadMore shown={10} noun="entries" hasMore onLoadMore={() => {}} />);
+    rerender(<LoadMore shown={20} noun="entries" hasMore={false} onLoadMore={() => {}} />);
+    expect(screen.getByText('That is all of them')).not.toHaveFocus();
+  });
+});
+
+describe('Switch labels', () => {
+  it('shows a short label on a narrow screen while the name stays the full one', () => {
+    render(<Switch label="Single-key shortcuts" shortLabel="Shortcuts" checked onChange={() => {}} />);
+    expect(screen.getByRole('switch', { name: /Single-key shortcuts/ })).toBeInTheDocument();
+    expect(screen.getByText('Shortcuts')).toHaveClass('lg:hidden');
+  });
+});
+
+describe('Checkbox describedby', () => {
+  it('keeps a caller description next to the hint', () => {
+    render(<Checkbox label="Send" hint="Hint" aria-describedby="extra" />);
+    expect(screen.getByRole('checkbox').getAttribute('aria-describedby')).toMatch(/-hint extra$/);
   });
 });
