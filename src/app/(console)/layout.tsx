@@ -31,7 +31,11 @@ export default function ConsoleLayout({ children }: { children: ReactNode }) {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
-        <main id="content" className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 md:px-6 lg:px-8 lg:py-8">
+        <main
+          id="content"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 outline-none md:px-6 lg:px-8 lg:py-8"
+        >
           {children}
         </main>
       </div>

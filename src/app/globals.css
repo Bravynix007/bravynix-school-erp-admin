@@ -30,6 +30,8 @@
   --color-border-subtle: #ece9e2;
   --color-border-strong: #c9c5bb;
   --color-border-focus: #0e5e5a;
+  /* Input outline: 3.7:1 on white, WCAG 1.4.11 asks for 3:1 (DESIGN.md 12 lists Stone 300, about 1.7:1). */
+  --color-border-field: #80878d;
 
   --color-action-primary: #0e5e5a;
   --color-action-primary-hover: #0b4b48;
@@ -73,6 +75,7 @@
   --color-line-subtle: var(--color-border-subtle);
   --color-line-strong: var(--color-border-strong);
   --color-focus: var(--color-border-focus);
+  --color-field: var(--color-border-field);
 
   --color-primary: var(--color-action-primary);
   --color-primary-hover: var(--color-action-primary-hover);
@@ -112,6 +115,8 @@
   --text-caption--line-height: 16px;
   --text-overline: 11px;
   --text-overline--line-height: 16px;
+  --text-mono: 13px;
+  --text-mono--line-height: 20px;
 
   /* Radius and shadow (DESIGN.md 10). */
   --radius-sm: 6px;
@@ -150,4 +155,25 @@
 
 @utility tabular {
   font-variant-numeric: tabular-nums;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background-image: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / 0.55) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
 }
