@@ -34,8 +34,6 @@ export interface DataTableProps<Row> {
   selectedId?: string;
   /** Opens the row, e.g. its side sheet. Clicking anywhere on the row does it. */
   onRowOpen?: (row: Row) => void;
-  /** Accessible name of the row's button, e.g. "Open Green Valley School". */
-  rowLabel?: (row: Row) => string;
   empty?: ReactNode;
   dense?: boolean;
   /** Pagination or Load more. */
@@ -60,7 +58,6 @@ export function DataTable<Row>({
   onSort,
   selectedId,
   onRowOpen,
-  rowLabel,
   empty,
   dense,
   footer,
@@ -169,7 +166,6 @@ export function DataTable<Row>({
                         <button
                           type="button"
                           onClick={() => onRowOpen(row)}
-                          aria-label={rowLabel?.(row)}
                           className="rounded-sm text-left font-medium text-ink hover:underline"
                         >
                           {column.cell(row)}

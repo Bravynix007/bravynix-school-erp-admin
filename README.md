@@ -63,7 +63,9 @@ keep tabs from refreshing at once and sign every tab out together.
 src/
   app/                    Routes only (App Router). (auth) = sign-in card, (console) = shell
   features/<module>/      Screens, forms and hooks for one module (auth today)
-  components/ui/          Design-system primitives: Button, TextField, OtpInput, StatusChip...
+  components/ui/          Design-system primitives: Button, fields (TextField, Select, MoneyField...),
+                          DataTable, FilterBar, Tabs, KpiTile, Timeline, StatusChip... Shown on /gallery
+                          (local and staging builds only)
   components/shell/       Sidebar, top bar, page header, session-ended, placeholders
   lib/api/                The API client, envelope types, ApiError
   lib/auth/               Session provider, in-memory token store, auth calls
@@ -85,6 +87,9 @@ e2e/                      Playwright specs and API mocks
 - **All API calls go through `lib/api/client.ts`** (ESLint blocks bare `fetch`). It unwraps the
   envelope, maps errors to `ApiError`, refreshes once on `TOKEN_EXPIRED`, and sets the request
   id. Branch on `error.code`, never on `message`.
+- **Input outlines use `border-field` (`#80878D`, 3.7:1 on white; WCAG 1.4.11 asks for 3:1), not the
+  decorative `border-default` the DESIGN.md components table lists (about 1.4:1).** Raise with the design
+  owner if DESIGN.md should change.
 - **Design tokens only** (DESIGN.md, "Quiet Ledger"). Colours, type sizes, radius and shadows
   come from `src/app/globals.css`; no hex values in components. One primary button per view.
   Status chips use the fixed `statusTone` mapping.
