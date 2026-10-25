@@ -152,7 +152,7 @@ describe('SupportModeBar', () => {
     return onExit;
   }
 
-  const announced = () => screen.getByRole('status').textContent;
+  const announced = () => screen.getByRole('status', { name: '' }).textContent;
 
   it('says it is read only, who is being looked at and how long is left', () => {
     setup(42 * 60 + 10);
@@ -169,15 +169,15 @@ describe('SupportModeBar', () => {
       vi.advanceTimersByTime(3000);
     });
     expect(screen.getByRole('timer')).toHaveTextContent('04:59');
-    expect(announced()).toBe('Support session ends in 5 minutes.');
+    expect(announced()).toBe('Support session ends in under 5 minutes.');
     act(() => {
       vi.advanceTimersByTime(60_000);
     });
-    expect(announced()).toBe('Support session ends in 5 minutes.');
+    expect(announced()).toBe('Support session ends in under 5 minutes.');
     act(() => {
       vi.advanceTimersByTime(180_000);
     });
-    expect(announced()).toBe('Support session ends in 1 minute.');
+    expect(announced()).toBe('Support session ends in under 1 minute.');
     act(() => {
       vi.advanceTimersByTime(61_000);
     });
@@ -202,7 +202,8 @@ describe('OfflineBand', () => {
   it('is absent online, shows the band offline, and reacts to the browser events', () => {
     Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: true });
     render(<OfflineBand />);
-    expect(screen.queryByRole('status')).toBeNull();
+    // The live region is there from the start, empty, so the change is announced when it fills.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
     act(() => {
       Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: false });
       window.dispatchEvent(new Event('offline'));
@@ -212,7 +213,7 @@ describe('OfflineBand', () => {
       Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: true });
       window.dispatchEvent(new Event('online'));
     });
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 });
 
@@ -230,5 +231,45 @@ describe('status panels', () => {
       'href',
       '/institutions',
     );
+  });
+});
+
+describe('review fixes', () => {
+  it('ProgressBar can say its value in words', () => {
+    render(<ProgressBar label="Run" value={2} max={5} valueText="2 of 5 stages done" />);
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '2 of 5 stages done');
+  });
+
+  it('AuditDiff wraps a long unbroken value inside a fixed-layout table (B2)', () => {
+    render(
+      <AuditDiff
+        caption="c"
+        changes={[{ field: 'Email', before: null, after: 'a'.repeat(80) + '@x.example' }]}
+      />,
+    );
+    expect(screen.getByRole('table')).toHaveClass('table-fixed');
+    expect(screen.getByText(/^a{80}@x\.example$/).closest('td')).toHaveClass('[overflow-wrap:anywhere]');
+  });
+
+  it('SupportModeBar is a named region and tells the screen when time is up', () => {
+    vi.useFakeTimers();
+    const start = new Date('2026-10-25T10:00:00.000Z').getTime();
+    vi.setSystemTime(start);
+    const onExpire = vi.fn();
+    render(
+      <SupportModeBar
+        scope="X"
+        expiresAt={new Date(start + 2000).toISOString()}
+        onExit={() => {}}
+        onExpire={onExpire}
+      />,
+    );
+    expect(screen.getByRole('region', { name: 'Support session' })).toBeInTheDocument();
+    expect(onExpire).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+    expect(onExpire).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
   });
 });

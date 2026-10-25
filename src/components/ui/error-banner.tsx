@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { IconAlertTriangle, IconX } from '@tabler/icons-react';
+import { IconAlertCircle, IconAlertTriangle } from '@tabler/icons-react';
 import { cn } from '@/lib/cn';
 import { Mono } from './mono';
 
@@ -39,7 +39,7 @@ export function ErrorBanner({
       )}
     >
       {tone === 'error' ? (
-        <IconX size={18} aria-hidden="true" className="shrink-0" />
+        <IconAlertCircle size={18} aria-hidden="true" className="shrink-0" />
       ) : (
         <IconAlertTriangle size={18} aria-hidden="true" className="shrink-0" />
       )}

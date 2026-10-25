@@ -39,10 +39,21 @@ interface ToastApi {
 
 const ToastContext = createContext<ToastApi | null>(null);
 
-/** Success toasts leave after 5 s (DESIGN.md 9). Errors stay until dismissed, so they cannot be missed. */
+function isPersistent(item: ToastItem): boolean {
+  return item.kind === 'error' || (!!item.action?.onClick && !item.action.href);
+}
+
+/**
+ * "View" toasts leave after 5 s (DESIGN.md 9). Errors and toasts whose action exists only there (Undo) stay until
+ * dismissed: a keyboard or switch user may not reach them in time (WCAG 2.2.1).
+ */
 export const TOAST_MS = 5000;
 const MAX_VISIBLE = 3;
 
+/**
+ * While a dialog or sheet is open the page behind it is inert, so a toast raised then is neither read out nor
+ * clickable. Show errors inside the dialog with an ErrorBanner, and push a success toast after closing it.
+ */
 export function useToast(): ToastApi {
   const api = useContext(ToastContext);
   if (!api) throw new Error('useToast needs a ToastProvider above it');
@@ -55,8 +66,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const dismiss = useCallback((id: number) => setItems((all) => all.filter((t) => t.id !== id)), []);
   const push = useCallback((kind: ToastItem['kind'], message: string, options?: ToastOptions) => {
+    if (process.env.NODE_ENV !== 'production' && document.querySelector('dialog[open]')) {
+      console.warn(
+        `Toast "${message}" was raised while a dialog is open; it will be inert. Use an ErrorBanner inside the dialog, or close it first.`,
+      );
+    }
     const item: ToastItem = { id: next.current++, kind, message, action: options?.action };
-    setItems((all) => [...all, item].slice(-MAX_VISIBLE));
+    setItems((all) => {
+      const next = [...all, item];
+      // Over the cap, the oldest toast that can be lost goes: never an error, never an Undo.
+      while (next.length > MAX_VISIBLE) {
+        const index = next.findIndex((t) => !isPersistent(t));
+        if (index === -1) break;
+        next.splice(index, 1);
+      }
+      return next;
+    });
   }, []);
 
   const api = useMemo<ToastApi>(
@@ -92,24 +117,46 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) => void }) {
-  const [paused, setPaused] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  // Where focus was before it entered the toast, so it can go back there when the toast leaves.
+  const returnTo = useRef<HTMLElement | null>(null);
+  const persistent = isPersistent(item);
+  const paused = hovered || focused;
 
-  // The clock stops while the pointer or keyboard focus is on the toast (WCAG 2.2.1), and restarts after.
+  function leave() {
+    // A toast that holds focus must not take it to the page's start when it goes (WCAG 2.4.3).
+    if (root.current?.contains(document.activeElement)) {
+      const back = returnTo.current?.isConnected ? returnTo.current : document.getElementById('content');
+      back?.focus();
+    }
+    onDismiss(item.id);
+  }
+
+  // The clock stops while the pointer or keyboard focus is on the toast (WCAG 2.2.1) and restarts after both leave.
   useEffect(() => {
-    if (item.kind === 'error' || paused) return;
-    const timer = setTimeout(() => onDismiss(item.id), TOAST_MS);
+    if (persistent || paused) return;
+    const timer = setTimeout(leave, TOAST_MS);
     return () => clearTimeout(timer);
-  }, [item.id, item.kind, paused, onDismiss]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id, persistent, paused]);
 
   const action = item.action;
   const actionClass = 'rounded-sm font-medium underline underline-offset-2';
   return (
     <div
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
-      className="pointer-events-auto flex items-start gap-3 rounded-md bg-frame px-4 py-3 text-body text-on-primary shadow-md"
+      ref={root}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={(event) => {
+        if (!focused) returnTo.current = event.relatedTarget as HTMLElement | null;
+        setFocused(true);
+      }}
+      onBlur={(event) => {
+        if (!root.current?.contains(event.relatedTarget as Node | null)) setFocused(false);
+      }}
+      className="on-frame pointer-events-auto flex items-start gap-3 rounded-md bg-frame px-4 py-3 text-body text-on-primary shadow-md"
     >
       <p className="min-w-0 flex-1 break-words">{item.message}</p>
       {action?.href ? (
@@ -117,14 +164,21 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: (id: numbe
           {action.label}
         </Link>
       ) : action ? (
-        <button type="button" className={actionClass} onClick={action.onClick}>
+        <button
+          type="button"
+          className={actionClass}
+          onClick={() => {
+            action.onClick?.();
+            leave();
+          }}
+        >
           {action.label}
         </button>
       ) : null}
       <button
         type="button"
         aria-label="Dismiss"
-        onClick={() => onDismiss(item.id)}
+        onClick={leave}
         className="-mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-on-frame hover:text-on-primary"
       >
         <IconX size={16} aria-hidden="true" />

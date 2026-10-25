@@ -26,7 +26,7 @@ function Value({ value, sign }: { value: string | null; sign: '−' | '+' }) {
 export function AuditDiff({ changes, caption }: { changes: FieldChange[]; caption: string }) {
   return (
     <div className="overflow-clip rounded-lg border border-line">
-      <table className="w-full border-collapse text-left">
+      <table className="w-full table-fixed border-collapse text-left">
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="bg-sunken text-label font-medium text-ink-secondary">
@@ -47,10 +47,10 @@ export function AuditDiff({ changes, caption }: { changes: FieldChange[]; captio
               <th scope="row" className="px-4 py-2.5 text-body font-normal text-ink">
                 {change.field}
               </th>
-              <td className="bg-error-bg/50 px-4 py-2.5 text-body break-words">
+              <td className="bg-error-bg/50 px-4 py-2.5 text-body [overflow-wrap:anywhere]">
                 <Value value={change.before} sign="−" />
               </td>
-              <td className="bg-success-bg/50 px-4 py-2.5 text-body break-words">
+              <td className="bg-success-bg/50 px-4 py-2.5 text-body [overflow-wrap:anywhere]">
                 <Value value={change.after} sign="+" />
               </td>
             </tr>

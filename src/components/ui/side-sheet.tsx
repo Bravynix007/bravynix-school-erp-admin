@@ -35,7 +35,7 @@ export function SideSheet({
       aria-labelledby={titleId}
       className={cn(
         'fixed top-0 right-0 bottom-0 left-auto h-dvh w-[560px] bg-surface shadow-[-24px_0_48px_rgba(22,34,44,0.16)]',
-        'max-xl:w-[480px] max-md:w-full',
+        'max-xl:w-[480px] max-md:w-screen',
       )}
     >
       <div className="flex h-full flex-col">

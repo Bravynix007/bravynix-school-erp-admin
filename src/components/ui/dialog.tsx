@@ -37,7 +37,7 @@ export function Dialog({
       className={cn(
         'w-full rounded-xl bg-surface shadow-lg',
         size === 'confirm' ? 'md:max-w-[480px]' : 'md:max-w-[640px]',
-        'max-md:fixed max-md:inset-x-0 max-md:top-auto max-md:bottom-0 max-md:max-w-none max-md:rounded-b-none',
+        'max-md:fixed max-md:inset-x-0 max-md:top-auto max-md:bottom-0 max-md:w-screen max-md:max-w-none max-md:rounded-b-none',
         'md:m-auto',
       )}
     >

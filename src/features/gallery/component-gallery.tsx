@@ -507,6 +507,11 @@ function Gallery() {
               { field: 'Plan', before: 'Basic', after: 'Plus' },
               { field: 'Seats', before: '300', after: '420' },
               { field: 'Notes', before: null, after: 'Upgraded after the audit' },
+              {
+                field: 'Contact',
+                before: 'owner@example.test',
+                after: 'lakshmi.narayanan.venkataramanan@sri-vidya-educational-society.example',
+              },
             ]}
           />
         </div>

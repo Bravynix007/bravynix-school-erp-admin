@@ -26,6 +26,11 @@ export function ModalDialog({
   ...rest
 }: ModalDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const openRef = useRef(open);
+  const pointerDownOnBackdrop = useRef(false);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -49,15 +54,35 @@ export function ModalDialog({
     onClose();
   }
 
+  // The browser closed it on its own (a repeated Esc under close-watcher rules): tell the owner, and if the
+  // owner keeps it open, show it again so the page and the state stay in step.
+  function onNativeClose() {
+    if (!openRef.current) return;
+    onClose();
+    setTimeout(() => {
+      const dialog = ref.current;
+      if (openRef.current && dialog && !dialog.open) dialog.showModal();
+    }, 0);
+  }
+
+  function onPointerDown(event: SyntheticEvent<HTMLDialogElement>) {
+    pointerDownOnBackdrop.current = event.target === event.currentTarget;
+  }
+
   function onBackdrop(event: SyntheticEvent<HTMLDialogElement, MouseEvent>) {
-    // A click on the dialog element itself (not on its content) is a click on the backdrop.
-    if (dismissOnBackdrop && event.target === event.currentTarget) onClose();
+    // A click on the dialog element itself (not on its content) is a click on the backdrop. Both the press and
+    // the release must be there: a text drag that starts in the sheet and ends outside it is not a dismissal.
+    const started = pointerDownOnBackdrop.current;
+    pointerDownOnBackdrop.current = false;
+    if (dismissOnBackdrop && started && event.target === event.currentTarget) onClose();
   }
 
   return (
     <dialog
       ref={ref}
       onCancel={onCancel}
+      onClose={onNativeClose}
+      onPointerDown={onPointerDown}
       onClick={onBackdrop}
       className={cn('backdrop:bg-overlay m-0 max-h-none max-w-none bg-transparent p-0 text-ink', className)}
       {...rest}

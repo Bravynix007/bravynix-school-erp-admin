@@ -1,7 +1,7 @@
 'use client';
 
 import { IconEye } from '@tabler/icons-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from './button';
 
 function format(seconds: number): string {
@@ -21,12 +21,15 @@ export function SupportModeBar({
   scope,
   expiresAt,
   onExit,
+  onExpire,
   now = Date.now,
 }: {
   /** Who is being looked at: "Green Valley School". */
   scope: string;
   expiresAt: string;
   onExit: () => void;
+  /** Called once when the time runs out, so the screen can leave support mode. */
+  onExpire?: () => void;
   /** For tests. */
   now?: () => number;
 }) {
@@ -45,13 +48,26 @@ export function SupportModeBar({
     remaining <= 0
       ? 'Support session has ended.'
       : remaining <= 60
-        ? 'Support session ends in 1 minute.'
+        ? 'Support session ends in under 1 minute.'
         : remaining <= 300
-          ? 'Support session ends in 5 minutes.'
+          ? 'Support session ends in under 5 minutes.'
           : '';
 
+  const expired = remaining <= 0;
+  const expire = useRef(onExpire);
+  useEffect(() => {
+    expire.current = onExpire;
+  }, [onExpire]);
+  useEffect(() => {
+    if (expired) expire.current?.();
+  }, [expired]);
+
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-support px-4 py-2 text-label text-ink">
+    <div
+      role="region"
+      aria-label="Support session"
+      className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-support px-4 py-2 text-label text-ink"
+    >
       <IconEye size={18} aria-hidden="true" className="shrink-0" />
       <p className="min-w-0 flex-1 font-medium">Support session · read only · {scope}</p>
       <p className="tabular">

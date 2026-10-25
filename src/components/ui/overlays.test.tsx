@@ -155,8 +155,21 @@ describe('SideSheet', () => {
     );
     fireEvent.click(screen.getByText('inside'));
     expect(onClose).not.toHaveBeenCalled();
+    fireEvent.pointerDown(screen.getByRole('dialog'));
     fireEvent.click(screen.getByRole('dialog'));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays open when a text drag starts inside and ends on the dimmed area (S5)', () => {
+    const onClose = vi.fn();
+    render(
+      <SideSheet open onClose={onClose} title="T">
+        <p>inside</p>
+      </SideSheet>,
+    );
+    fireEvent.pointerDown(screen.getByText('inside'));
+    fireEvent.click(screen.getByRole('dialog'));
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('is 560 px wide, 480 px on a tablet and full width on a phone', () => {
@@ -165,7 +178,7 @@ describe('SideSheet', () => {
         x
       </SideSheet>,
     );
-    expect(screen.getByRole('dialog')).toHaveClass('w-[560px]', 'max-xl:w-[480px]', 'max-md:w-full');
+    expect(screen.getByRole('dialog')).toHaveClass('w-[560px]', 'max-xl:w-[480px]', 'max-md:w-screen');
   });
 });
 
@@ -306,5 +319,112 @@ describe('Dialog reopened', () => {
     fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
     fireEvent.click(screen.getByText('open'));
     expect(screen.getByLabelText('field')).toHaveValue('');
+  });
+});
+
+describe('Toast review fixes', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  function Raise({ run }: { run: (toast: ReturnType<typeof useToast>) => void }) {
+    const toast = useToast();
+    return <button onClick={() => run(toast)}>go</button>;
+  }
+
+  const setup = (run: (toast: ReturnType<typeof useToast>) => void) =>
+    render(
+      <ToastProvider>
+        <Raise run={run} />
+      </ToastProvider>,
+    );
+
+  it('uses the marigold ring on its Ink background (B1)', () => {
+    setup((t) => t.success('Saved'));
+    fireEvent.click(screen.getByText('go'));
+    expect(screen.getByText('Saved').parentElement).toHaveClass('on-frame', 'bg-frame');
+  });
+
+  it('keeps the clock stopped while focus is inside, even after the pointer passes over (S1a)', () => {
+    setup((t) => t.success('Saved', { action: { label: 'View', href: '/dues' } }));
+    fireEvent.click(screen.getByText('go'));
+    const toast = screen.getByText('Saved').parentElement!;
+    fireEvent.focus(screen.getByRole('link', { name: 'View' }));
+    fireEvent.mouseEnter(toast);
+    fireEvent.mouseLeave(toast);
+    act(() => {
+      vi.advanceTimersByTime(TOAST_MS * 3);
+    });
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+    fireEvent.blur(screen.getByRole('link', { name: 'View' }), { relatedTarget: document.body });
+    act(() => {
+      vi.advanceTimersByTime(TOAST_MS + 100);
+    });
+    expect(screen.queryByText('Saved')).toBeNull();
+  });
+
+  it('gives focus back to where it came from when the toast it holds is dismissed (S1b)', () => {
+    function Page() {
+      const toast = useToast();
+      return (
+        <>
+          <button onClick={() => toast.error('Could not save')}>origin</button>
+          <main id="content" tabIndex={-1} />
+        </>
+      );
+    }
+    render(
+      <ToastProvider>
+        <Page />
+      </ToastProvider>,
+    );
+    const origin = screen.getByText('origin');
+    origin.focus();
+    fireEvent.click(origin);
+    const dismiss = screen.getByRole('button', { name: 'Dismiss' });
+    fireEvent.focus(dismiss, { relatedTarget: origin });
+    dismiss.focus();
+    fireEvent.click(dismiss);
+    expect(screen.queryByText('Could not save')).toBeNull();
+    expect(origin).toHaveFocus();
+  });
+
+  it('never drops an error to make room (S2)', () => {
+    setup((t) => {
+      t.error('Disk full');
+      t.success('a');
+      t.success('b');
+      t.success('c');
+      t.success('d');
+    });
+    fireEvent.click(screen.getByText('go'));
+    expect(screen.getByText('Disk full')).toBeInTheDocument();
+    expect(screen.getByText('d')).toBeInTheDocument();
+    expect(screen.queryByText('a')).toBeNull();
+  });
+
+  it('keeps an Undo toast until it is dismissed (S4), but not a View toast', () => {
+    setup((t) => {
+      t.success('Removed', { action: { label: 'Undo', onClick: () => {} } });
+      t.success('Raised', { action: { label: 'View', href: '/dues' } });
+    });
+    fireEvent.click(screen.getByText('go'));
+    act(() => {
+      vi.advanceTimersByTime(TOAST_MS * 6);
+    });
+    expect(screen.getByText('Removed')).toBeInTheDocument();
+    expect(screen.queryByText('Raised')).toBeNull();
+  });
+
+  it('warns in development when a toast is raised behind an open dialog (S3)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(
+      <ToastProvider>
+        <dialog open />
+        <Raise run={(t) => t.error('Nope')} />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByText('go'));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('ErrorBanner'));
+    warn.mockRestore();
   });
 });

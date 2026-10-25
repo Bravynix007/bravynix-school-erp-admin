@@ -131,6 +131,8 @@
 @layer base {
   html {
     color-scheme: light;
+    /* Locking the page scroll under a dialog must not shift the page sideways. */
+    scrollbar-gutter: stable;
   }
 
   body {

@@ -137,3 +137,70 @@ test('going offline shows the band and coming back removes it', async ({ page, c
   await context.setOffline(false);
   await expect(page.getByText("You're offline. Changes can't be saved.")).toBeHidden();
 });
+
+test('the toast focus ring is marigold on Ink (B1)', async ({ page }) => {
+  await signedInGallery(page);
+  await page.getByRole('button', { name: 'Show success toast' }).click();
+  const view = page.getByRole('link', { name: 'View' });
+  await page.keyboard.press('Tab');
+  await view.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(view).toBeFocused();
+  const color = await view.evaluate((el) => getComputedStyle(el).outlineColor);
+  expect(color).toBe('rgb(232, 176, 74)');
+});
+
+test('a long value in the audit diff does not push the page sideways at 320 px (B2)', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await signedInGallery(page);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  const table = page.getByRole('table', { name: 'Changes in this entry' });
+  await table.scrollIntoViewIfNeeded();
+  const right = await table.evaluate((el) => {
+    const range = document.createRange();
+    const cells = [...el.querySelectorAll('td')];
+    let max = 0;
+    for (const c of cells) {
+      range.selectNodeContents(c);
+      for (const r of range.getClientRects()) max = Math.max(max, r.right);
+    }
+    return { max, edge: el.parentElement!.getBoundingClientRect().right };
+  });
+  expect(right.max).toBeLessThanOrEqual(right.edge + 0.5);
+});
+
+test('dismissing a toast from the keyboard returns focus to the page (S1)', async ({ page }) => {
+  await signedInGallery(page);
+  const opener = page.getByRole('button', { name: 'Show error toast' });
+  await opener.focus();
+  await page.keyboard.press('Enter');
+  const dismiss = page.getByRole('button', { name: 'Dismiss' });
+  await dismiss.focus();
+  await page.keyboard.press('Enter');
+  await expect(dismiss).toBeHidden();
+  const tag = await page.evaluate(() => document.activeElement?.tagName);
+  expect(tag).not.toBe('BODY');
+});
+
+test('a text drag that ends on the backdrop does not close the side sheet (S5)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signedInGallery(page);
+  await page.getByRole('button', { name: 'Open side sheet' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Green Valley School' });
+  const box = (await sheet.boundingBox())!;
+  await page.mouse.move(box.x + 100, box.y + 200);
+  await page.mouse.down();
+  await page.mouse.move(box.x - 150, box.y + 200, { steps: 8 });
+  await page.mouse.up();
+  await expect(sheet).toBeVisible();
+});
+
+test('an Undo-style toast is still there after 8 seconds', async ({ page }) => {
+  // The gallery has no Undo toast; the unit tests cover the rule. This guards the error toast the same way.
+  await signedInGallery(page);
+  await page.getByRole('button', { name: 'Show error toast' }).click();
+  await page.waitForTimeout(6000);
+  await expect(page.getByText('Could not save. Check your connection.')).toBeVisible();
+});

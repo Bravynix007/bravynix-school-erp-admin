@@ -1,7 +1,20 @@
+import { useId } from 'react';
 import { cn } from '@/lib/cn';
+import { Spinner } from './spinner';
 import { StatusChip, type StatusTone } from './status-chip';
 
-export function ProgressBar({ value, max = 100, label }: { value: number; max?: number; label: string }) {
+export function ProgressBar({
+  value,
+  max = 100,
+  label,
+  valueText,
+}: {
+  value: number;
+  max?: number;
+  label: string;
+  /** Spoken instead of "40 percent", e.g. "2 of 5 stages done". */
+  valueText?: string;
+}) {
   const percent = max <= 0 ? 0 : Math.min(100, Math.max(0, (value / max) * 100));
   return (
     <div
@@ -10,6 +23,7 @@ export function ProgressBar({ value, max = 100, label }: { value: number; max?: 
       aria-valuemin={0}
       aria-valuemax={max}
       aria-valuenow={Math.min(max, Math.max(0, value))}
+      aria-valuetext={valueText}
       className="h-2 w-full overflow-hidden rounded-full bg-sunken"
     >
       <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
@@ -39,10 +53,13 @@ const chip: Record<StageState, { tone: StatusTone; label: string }> = {
  */
 export function PipelineCard({ title, stages }: { title: string; stages: Stage[] }) {
   const done = stages.filter((s) => s.state === 'done').length;
+  const titleId = useId();
   return (
-    <section aria-label={title} className="rounded-lg border border-line bg-surface p-5">
+    <section aria-labelledby={titleId} className="rounded-lg border border-line bg-surface p-5">
       <div className="flex items-baseline justify-between gap-4">
-        <h3 className="text-h3 font-semibold">{title}</h3>
+        <h3 id={titleId} className="text-h3 font-semibold">
+          {title}
+        </h3>
         <p className="text-caption text-ink-secondary tabular">
           {done} of {stages.length} done
         </p>
@@ -63,7 +80,11 @@ export function PipelineCard({ title, stages }: { title: string; stages: Stage[]
               </p>
               {stage.detail ? <p className="text-caption text-ink-tertiary">{stage.detail}</p> : null}
             </div>
-            <StatusChip tone={chip[stage.state].tone} label={chip[stage.state].label} />
+            <StatusChip
+              tone={chip[stage.state].tone}
+              label={chip[stage.state].label}
+              icon={stage.state === 'active' ? <Spinner size={12} /> : undefined}
+            />
           </li>
         ))}
       </ol>
