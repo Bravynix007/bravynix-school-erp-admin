@@ -193,10 +193,18 @@ test('selecting text in a row (drag or double-click) does not open the row', asy
   const table = page.getByRole('table', { name: 'Institutions' });
   const row = table.getByRole('row').nth(3);
   const cell = row.getByRole('cell').nth(1);
-  const box = (await cell.boundingBox())!;
-  await page.mouse.move(box.x + 4, box.y + box.height / 2);
+  await cell.scrollIntoViewIfNeeded();
+  // Drag across the value's text (the cell's first span is a hidden column label): Firefox and WebKit start no selection from a cell's padding.
+  const text = await cell.evaluate((el) => {
+    const node = document.createTreeWalker(el.lastElementChild!, NodeFilter.SHOW_TEXT).nextNode()!;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const { x, y, width, height } = range.getBoundingClientRect();
+    return { x, y, width, height };
+  });
+  await page.mouse.move(text.x + 1, text.y + text.height / 2);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width - 4, box.y + box.height / 2, { steps: 8 });
+  await page.mouse.move(text.x + text.width - 1, text.y + text.height / 2, { steps: 8 });
   await page.mouse.up();
   expect(await page.evaluate(() => window.getSelection()?.toString().length ?? 0)).toBeGreaterThan(0);
   await expect(table.locator('tr[aria-current="true"]')).toHaveCount(0);
