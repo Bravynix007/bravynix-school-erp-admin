@@ -40,12 +40,16 @@ export interface DataTableProps<Row> {
   footer?: ReactNode;
 }
 
-const INTERACTIVE = 'a,button,input,select,textarea,[role="menuitem"],[role="button"]';
+const INTERACTIVE =
+  'a,button,input,select,textarea,label,summary,[contenteditable],[role="menuitem"],[role="button"],[role="checkbox"],[role="switch"],[role="link"],[role="tab"]';
 
 /**
  * White, 12 px radius, Paper 200 header, 48 px rows (40 dense), no vertical
  * lines (DESIGN.md 9). From the small breakpoint down, rows stack as labelled
  * cards. The table never scrolls sideways, so 200% zoom keeps working.
+ *
+ * The primary cell sits inside the row's button, so its content must be text
+ * and inline markup only: no links, buttons or fields in it.
  */
 export function DataTable<Row>({
   caption,
@@ -70,6 +74,8 @@ export function DataTable<Row>({
   function clickRow(event: MouseEvent<HTMLTableRowElement>, row: Row) {
     if (!onRowOpen) return;
     if ((event.target as HTMLElement).closest(INTERACTIVE)) return;
+    // Selecting text (to copy a code) is not a request to open the row.
+    if (window.getSelection()?.toString()) return;
     onRowOpen(row);
   }
 
@@ -78,13 +84,15 @@ export function DataTable<Row>({
       <div role="status" className="sr-only">
         {refreshing ? 'Refreshing the list' : ''}
       </div>
+      {/* Explicit roles survive the display changes below md, which can drop native table semantics in WebKit. */}
       <table
+        role="table"
         aria-busy={refreshing || undefined}
         className={cn('w-full border-collapse text-left', refreshing && 'opacity-60 transition-opacity')}
       >
         <caption className="sr-only">{caption}</caption>
-        <thead className="max-md:sr-only">
-          <tr>
+        <thead role="rowgroup" className="max-md:sr-only">
+          <tr role="row">
             {columns.map((column) => {
               const active = sort?.key === column.key;
               const ariaSort = column.sortable
@@ -97,6 +105,7 @@ export function DataTable<Row>({
               return (
                 <th
                   key={column.key}
+                  role="columnheader"
                   scope="col"
                   aria-sort={ariaSort}
                   className={cn(
@@ -133,24 +142,28 @@ export function DataTable<Row>({
             })}
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           {rows.map((row) => {
             const id = getRowId(row);
             const selected = id === selectedId;
             return (
               <tr
                 key={id}
+                role="row"
                 aria-current={selected ? 'true' : undefined}
                 onClick={onRowOpen ? (event) => clickRow(event, row) : undefined}
                 className={cn(
                   'border-t border-line first:border-t-0 max-md:flex max-md:flex-col max-md:gap-1 max-md:px-4 max-md:py-3',
-                  selected ? 'bg-primary-tint' : 'hover:bg-row-hover',
+                  selected
+                    ? 'bg-primary-tint [&_.text-ink-tertiary]:text-ink-secondary'
+                    : 'hover:bg-row-hover',
                   onRowOpen && 'cursor-pointer',
                 )}
               >
                 {columns.map((column) => (
                   <td
                     key={column.key}
+                    role="cell"
                     className={cn(
                       'px-4 text-body text-ink',
                       dense ? 'py-2' : 'py-3',
@@ -158,7 +171,7 @@ export function DataTable<Row>({
                       'max-md:flex max-md:justify-between max-md:gap-4 max-md:p-0 max-md:text-left',
                     )}
                   >
-                    <span className="hidden text-caption text-ink-secondary max-md:inline">
+                    <span aria-hidden="true" className="hidden text-caption text-ink-secondary max-md:inline">
                       {column.header}
                     </span>
                     <span className="min-w-0 max-md:text-right">

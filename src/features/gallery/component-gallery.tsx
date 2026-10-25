@@ -110,7 +110,7 @@ function Gallery() {
       cell: (r) => (
         <>
           <span className="block">{r.name}</span>
-          <Mono className="text-caption text-ink-tertiary">{r.code}</Mono>
+          <Mono className="text-caption text-ink-secondary">{r.code}</Mono>
         </>
       ),
     },

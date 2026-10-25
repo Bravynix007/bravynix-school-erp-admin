@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { IconSearch, IconX } from '@tabler/icons-react';
 import { cn } from '@/lib/cn';
+import { useSearchShortcut } from '@/lib/hooks/use-search-shortcut';
+import { useShortcutsEnabled } from '@/lib/shortcuts';
 import { Button } from './button';
 import type { SelectOption } from './select';
 import { TextField } from './text-field';
@@ -40,17 +42,8 @@ export function FilterBar({
 }) {
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest('input,textarea,select,[contenteditable="true"]')) return;
-      event.preventDefault();
-      searchRef.current?.focus();
-    }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  useSearchShortcut(searchRef);
+  const shortcuts = useShortcutsEnabled();
 
   const applied = filters
     .filter((f) => f.value !== '')
@@ -60,6 +53,8 @@ export function FilterBar({
   function clear() {
     onSearchChange('');
     for (const f of filters) f.onChange('');
+    // The Clear button disappears with the filters, so focus moves to the search box (WCAG 2.4.3).
+    searchRef.current?.focus();
   }
 
   return (
@@ -70,7 +65,7 @@ export function FilterBar({
           label={searchLabel}
           hideLabel
           type="search"
-          placeholder={searchPlaceholder ?? `${searchLabel} (press /)`}
+          placeholder={searchPlaceholder ?? (shortcuts ? `${searchLabel} (press /)` : searchLabel)}
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           prefix={<IconSearch size={16} aria-hidden="true" />}
@@ -85,8 +80,8 @@ export function FilterBar({
               f.value ? 'border-primary' : 'border-field hover:border-ink-secondary',
             )}
           >
-            <span className="sr-only">{f.label}</span>
             <select
+              aria-label={f.label}
               value={f.value}
               onChange={(event) => f.onChange(event.target.value)}
               className="h-full cursor-pointer appearance-none rounded-md bg-transparent pr-3 pl-3 outline-none"
@@ -115,7 +110,11 @@ export function FilterBar({
             <li key={filter.key}>
               <button
                 type="button"
-                onClick={() => filter.onChange('')}
+                onClick={() => {
+                  filter.onChange('');
+                  // This chip goes away; keep focus in the bar instead of dropping it to the page.
+                  searchRef.current?.focus();
+                }}
                 aria-label={`Remove filter ${filter.label}: ${text}`}
                 className="inline-flex h-7 items-center gap-1.5 rounded-full bg-primary-tint px-3 text-caption font-medium text-primary hover:brightness-95"
               >

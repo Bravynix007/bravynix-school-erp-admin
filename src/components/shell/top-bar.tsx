@@ -3,14 +3,17 @@
 import { IconLogout } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useSession } from '@/lib/auth/session';
 import { env } from '@/lib/env';
+import { setShortcutsEnabled, useShortcutsEnabled } from '@/lib/shortcuts';
 
 /** 64 px white top bar with environment badge and sign-out (DESIGN.md 8, 9). */
 export function TopBar() {
   const { signOut } = useSession();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const shortcuts = useShortcutsEnabled();
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-line-subtle bg-surface px-6 lg:px-8">
       <div className="flex items-center gap-3">
@@ -22,6 +25,12 @@ export function TopBar() {
         ) : null}
       </div>
       <div className="flex items-center gap-3">
+        <Switch
+          label="Single-key shortcuts"
+          labelClassName="max-lg:sr-only"
+          checked={shortcuts}
+          onChange={setShortcutsEnabled}
+        />
         {failed ? (
           <p role="alert" className="text-caption text-error">
             Couldn&apos;t sign out. Check your connection and try again.

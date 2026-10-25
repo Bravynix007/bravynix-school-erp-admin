@@ -59,8 +59,9 @@ describe('KpiTile', () => {
   it('shows label, value and caption, with the exact amount behind a compact one', () => {
     render(<KpiTile label="Dues open" value="₹12.4 L" exact="₹12,40,000.00" caption="4 Societies" />);
     expect(screen.getByText('Dues open')).toBeInTheDocument();
-    expect(screen.getByText('₹12.4 L')).toHaveAttribute('title', '₹12,40,000.00');
-    expect(screen.getByLabelText('₹12.4 L, ₹12,40,000.00')).toBeInTheDocument();
+    expect(screen.getByText('₹12.4 L')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('₹12,40,000.00')).toHaveClass('sr-only');
+    expect(screen.getByText('₹12.4 L').parentElement).toHaveAttribute('title', '₹12,40,000.00');
     expect(screen.queryByRole('link')).toBeNull();
   });
 
@@ -102,7 +103,7 @@ describe('StampBlock', () => {
 
 describe('Tabs', () => {
   const items = [
-    { value: 'owners', label: 'Owners', count: '2/3' },
+    { value: 'owners', label: 'Owners', count: '2/3', countLabel: '2 of 3' },
     { value: 'institutions', label: 'Institutions' },
     { value: 'billing', label: 'Billing' },
   ];

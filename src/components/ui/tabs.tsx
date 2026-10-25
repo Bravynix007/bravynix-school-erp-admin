@@ -8,6 +8,8 @@ export interface TabItem {
   label: string;
   /** Caption beside the label, e.g. "2/3" for Owners (DESIGN.md 9). */
   count?: string;
+  /** What a screen reader says for the count, e.g. "2 of 3". */
+  countLabel?: string;
 }
 
 export const tabId = (idPrefix: string, value: string) => `${idPrefix}-tab-${value}`;
@@ -32,9 +34,11 @@ export function Tabs({
   onChange: (value: string) => void;
 }) {
   const refs = useRef(new Map<string, HTMLButtonElement>());
+  // A value that matches no tab still leaves one tab in the tab order.
+  const current = items.some((i) => i.value === value) ? value : items[0]?.value;
 
   function move(event: KeyboardEvent<HTMLDivElement>) {
-    const index = items.findIndex((i) => i.value === value);
+    const index = items.findIndex((i) => i.value === current);
     let next = index;
     if (event.key === 'ArrowRight') next = (index + 1) % items.length;
     else if (event.key === 'ArrowLeft') next = (index - 1 + items.length) % items.length;
@@ -55,7 +59,7 @@ export function Tabs({
       className="flex flex-wrap gap-x-6 border-b border-line"
     >
       {items.map((item) => {
-        const selected = item.value === value;
+        const selected = item.value === current;
         return (
           <button
             key={item.value}
@@ -75,8 +79,13 @@ export function Tabs({
               selected ? 'border-primary text-ink' : 'border-transparent text-ink-secondary hover:text-ink',
             )}
           >
-            {item.label}
-            {item.count ? <span className="text-caption text-ink-tertiary tabular">{item.count}</span> : null}
+            {item.label}{' '}
+            {item.count ? (
+              <span className="text-caption text-ink-tertiary tabular">
+                <span aria-hidden={item.countLabel ? true : undefined}>{item.count}</span>
+                {item.countLabel ? <span className="sr-only"> {item.countLabel}</span> : null}
+              </span>
+            ) : null}
           </button>
         );
       })}

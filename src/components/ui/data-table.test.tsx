@@ -142,14 +142,18 @@ describe('Pagination', () => {
     );
     expect(screen.getByText('Showing 1–20 of 142 Institutions')).toBeInTheDocument();
     expect(screen.getByText('Page 1 of 8')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled();
+    // Soft-disabled: still focusable, so focus is not thrown to the page when the end is reached.
+    expect(screen.getByRole('button', { name: 'Previous' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    expect(onPageChange).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(onPageChange).toHaveBeenCalledWith(2);
     rerender(
       <Pagination page={8} pageSize={20} total={142} noun="Institutions" onPageChange={onPageChange} />,
     );
     expect(screen.getByText('Showing 141–142 of 142 Institutions')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('handles an empty list', () => {
@@ -170,9 +174,16 @@ describe('LoadMore', () => {
     expect(screen.getByText('That is all of them')).toBeInTheDocument();
   });
 
-  it('shows the busy state without allowing a second click', () => {
-    render(<LoadMore shown={40} noun="entries" hasMore loading onLoadMore={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Load more' })).toBeDisabled();
+  it('shows the busy state without allowing a second click, and keeps focus', async () => {
+    const onLoadMore = vi.fn();
+    render(<LoadMore shown={40} noun="entries" hasMore loading onLoadMore={onLoadMore} />);
+    const button = screen.getByRole('button', { name: 'Load more' });
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    button.focus();
+    await userEvent.click(button);
+    expect(onLoadMore).not.toHaveBeenCalled();
+    expect(button).toHaveFocus();
   });
 });
 

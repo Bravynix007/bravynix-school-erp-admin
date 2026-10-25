@@ -1,6 +1,6 @@
 import { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { Field, fieldBox } from './field';
+import { Field, fieldBox, joinIds } from './field';
 
 export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'prefix'> {
   label: string;
@@ -15,7 +15,19 @@ export interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElemen
 }
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function TextField(
-  { label, error, hint, requiredMark, hideLabel, prefix, id, className, inputClassName, ...rest },
+  {
+    label,
+    error,
+    hint,
+    requiredMark,
+    hideLabel,
+    prefix,
+    id,
+    className,
+    inputClassName,
+    'aria-describedby': extraDescription,
+    ...rest
+  },
   ref,
 ) {
   return (
@@ -35,7 +47,8 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
             ref={ref}
             id={control.id}
             aria-invalid={control.invalid}
-            aria-describedby={control.describedBy}
+            aria-required={control.required}
+            aria-describedby={joinIds(control.describedBy, extraDescription)}
             className={cn(
               'h-full w-full bg-transparent text-body text-ink outline-none placeholder:text-ink-tertiary',
               inputClassName,
