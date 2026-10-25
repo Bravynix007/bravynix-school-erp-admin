@@ -34,11 +34,11 @@ export function SideSheet({
       dismissOnBackdrop
       aria-labelledby={titleId}
       className={cn(
-        'fixed top-0 right-0 bottom-0 left-auto h-dvh w-[560px] bg-surface shadow-[-24px_0_48px_rgba(22,34,44,0.16)]',
-        'max-xl:w-[480px] max-md:w-screen',
+        'fixed top-0 right-0 bottom-0 left-auto h-dvh w-[560px] border border-transparent bg-surface shadow-[-24px_0_48px_rgba(22,34,44,0.16)]',
+        'max-xl:w-[480px] max-md:inset-x-0 max-md:w-auto',
       )}
     >
-      <div className="flex h-full flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <header className="flex items-start gap-3 border-b border-line-subtle px-6 py-4 max-md:px-4">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
             <h2 id={titleId} className="text-h2 font-semibold break-words">

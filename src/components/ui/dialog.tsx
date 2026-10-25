@@ -35,13 +35,14 @@ export function Dialog({
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
       className={cn(
-        'w-full rounded-xl bg-surface shadow-lg',
+        // The transparent border becomes the dialog's edge in forced colours, where shadows vanish.
+        'w-full rounded-xl border border-transparent bg-surface shadow-lg',
         size === 'confirm' ? 'md:max-w-[480px]' : 'md:max-w-[640px]',
-        'max-md:fixed max-md:inset-x-0 max-md:top-auto max-md:bottom-0 max-md:w-screen max-md:max-w-none max-md:rounded-b-none',
+        'max-md:fixed max-md:inset-x-0 max-md:top-auto max-md:bottom-0 max-md:w-auto max-md:max-w-none max-md:rounded-b-none',
         'md:m-auto',
       )}
     >
-      <div className="flex max-h-[calc(100dvh-4rem)] flex-col">
+      <div className="flex max-h-[calc(100dvh-4rem)] min-h-0 flex-col">
         <div className="overflow-y-auto p-6 pb-4">
           <h2 id={titleId} className="text-h2 font-semibold">
             {title}

@@ -1,7 +1,27 @@
 'use client';
 
 import { useEffect, useRef, type DialogHTMLAttributes, type ReactNode, type SyntheticEvent } from 'react';
+import { IconWifiOff } from '@tabler/icons-react';
 import { cn } from '@/lib/cn';
+import { useOnline } from './offline-band';
+
+/**
+ * The page's offline band sits behind the modal, inert and unannounced, so each open dialog carries its own line.
+ * The live region is mounted with the dialog and filled when the network goes, so it is announced.
+ */
+function OfflineNote() {
+  const online = useOnline();
+  return (
+    <div role="status">
+      {online ? null : (
+        <div className="flex items-center gap-2 bg-warning-bg px-6 py-2 text-label text-ink max-md:px-4">
+          <IconWifiOff size={16} aria-hidden="true" className="shrink-0 text-warning" />
+          You&apos;re offline. Changes can&apos;t be saved.
+        </div>
+      )}
+    </div>
+  );
+}
 
 export interface ModalDialogProps extends Omit<DialogHTMLAttributes<HTMLDialogElement>, 'open' | 'onClose'> {
   open: boolean;
@@ -84,10 +104,18 @@ export function ModalDialog({
       onClose={onNativeClose}
       onPointerDown={onPointerDown}
       onClick={onBackdrop}
-      className={cn('backdrop:bg-overlay m-0 max-h-none max-w-none bg-transparent p-0 text-ink', className)}
+      className={cn(
+        'backdrop:bg-overlay m-0 max-h-none max-w-none p-0 text-ink open:flex open:flex-col',
+        className,
+      )}
       {...rest}
     >
-      {open ? children : null}
+      {open ? (
+        <>
+          <OfflineNote />
+          {children}
+        </>
+      ) : null}
     </dialog>
   );
 }

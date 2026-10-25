@@ -30,7 +30,7 @@ export function AuditDiff({ changes, caption }: { changes: FieldChange[]; captio
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="bg-sunken text-label font-medium text-ink-secondary">
-            <th scope="col" className="px-4 py-2.5">
+            <th scope="col" className="w-[30%] px-4 py-2.5 max-md:w-[26%] max-md:px-2">
               Field
             </th>
             <th scope="col" className="px-4 py-2.5">
@@ -44,13 +44,13 @@ export function AuditDiff({ changes, caption }: { changes: FieldChange[]; captio
         <tbody>
           {changes.map((change) => (
             <tr key={change.field} className="border-t border-line align-top">
-              <th scope="row" className="px-4 py-2.5 text-body font-normal text-ink">
+              <th scope="row" className="px-4 py-2.5 text-body font-normal break-words text-ink max-md:px-2">
                 {change.field}
               </th>
-              <td className="bg-error-bg/50 px-4 py-2.5 text-body [overflow-wrap:anywhere]">
+              <td className="bg-error-bg/50 px-4 py-2.5 text-body break-words">
                 <Value value={change.before} sign="−" />
               </td>
-              <td className="bg-success-bg/50 px-4 py-2.5 text-body [overflow-wrap:anywhere]">
+              <td className="bg-success-bg/50 px-4 py-2.5 text-body break-words">
                 <Value value={change.after} sign="+" />
               </td>
             </tr>

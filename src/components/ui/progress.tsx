@@ -24,9 +24,12 @@ export function ProgressBar({
       aria-valuemax={max}
       aria-valuenow={Math.min(max, Math.max(0, value))}
       aria-valuetext={valueText}
-      className="h-2 w-full overflow-hidden rounded-full bg-sunken"
+      className="h-2 w-full overflow-hidden rounded-full border border-transparent bg-sunken forced-colors:border-[ButtonText]"
     >
-      <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
+      <div
+        className="h-full rounded-full bg-primary forced-colors:bg-[Highlight]"
+        style={{ width: `${percent}%` }}
+      />
     </div>
   );
 }

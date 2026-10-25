@@ -248,7 +248,7 @@ describe('review fixes', () => {
       />,
     );
     expect(screen.getByRole('table')).toHaveClass('table-fixed');
-    expect(screen.getByText(/^a{80}@x\.example$/).closest('td')).toHaveClass('[overflow-wrap:anywhere]');
+    expect(screen.getByText(/^a{80}@x\.example$/).closest('td')).toHaveClass('break-words');
   });
 
   it('SupportModeBar is a named region and tells the screen when time is up', () => {

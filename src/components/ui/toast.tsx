@@ -49,6 +49,8 @@ function isPersistent(item: ToastItem): boolean {
  */
 export const TOAST_MS = 5000;
 const MAX_VISIBLE = 3;
+/** Errors never expire, so beyond this many the older ones fold into a "Show N more" button instead of filling a small or zoomed screen. */
+const ERRORS_SHOWN = 2;
 
 /**
  * While a dialog or sheet is open the page behind it is inert, so a toast raised then is neither read out nor
@@ -62,7 +64,26 @@ export function useToast(): ToastApi {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
+  const [showAllErrors, setShowAllErrors] = useState(false);
   const next = useRef(1);
+  const viewport = useRef<HTMLDivElement>(null);
+
+  // The stack sits over the page's bottom edge. Tell the browser, so a focused control is scrolled clear of it
+  // instead of under it (WCAG 2.4.11).
+  useEffect(() => {
+    const element = viewport.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const root = document.documentElement;
+    const observer = new ResizeObserver(() => {
+      const height = element.getBoundingClientRect().height;
+      root.style.scrollPaddingBottom = height > 0 ? `${Math.ceil(height) + 32}px` : '';
+    });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      root.style.scrollPaddingBottom = '';
+    };
+  }, []);
 
   const dismiss = useCallback((id: number) => setItems((all) => all.filter((t) => t.id !== id)), []);
   const push = useCallback((kind: ToastItem['kind'], message: string, options?: ToastOptions) => {
@@ -92,11 +113,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [push],
   );
 
+  const errors = items.filter((t) => t.kind === 'error');
+
   return (
     <ToastContext.Provider value={api}>
       {children}
       {/* Both regions stay mounted so a screen reader has them registered before the first toast arrives. */}
-      <div className="pointer-events-none fixed bottom-4 left-4 z-[60] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2">
+      <div
+        ref={viewport}
+        className="pointer-events-none fixed bottom-4 left-4 z-[60] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-2"
+      >
         <div role="status" aria-live="polite" className="flex flex-col gap-2">
           {items
             .filter((t) => t.kind === 'success')
@@ -105,12 +131,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             ))}
         </div>
         <div role="alert" className="flex flex-col gap-2">
-          {items
-            .filter((t) => t.kind === 'error')
-            .map((t) => (
-              <ToastCard key={t.id} item={t} onDismiss={dismiss} />
-            ))}
+          {errors.slice(showAllErrors ? 0 : -ERRORS_SHOWN).map((t) => (
+            <ToastCard key={t.id} item={t} onDismiss={dismiss} />
+          ))}
         </div>
+        {errors.length > ERRORS_SHOWN ? (
+          <button
+            type="button"
+            aria-expanded={showAllErrors}
+            onClick={() => setShowAllErrors((all) => !all)}
+            className="on-frame pointer-events-auto self-start rounded-md bg-frame px-3 py-1.5 text-label font-medium text-on-primary shadow-md"
+          >
+            {showAllErrors ? 'Show fewer errors' : `Show ${errors.length - ERRORS_SHOWN} more`}
+          </button>
+        ) : null}
       </div>
     </ToastContext.Provider>
   );

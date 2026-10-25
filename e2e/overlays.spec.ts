@@ -89,12 +89,21 @@ test('on a phone the side sheet is a full page and the dialog is a bottom sheet'
   await signedInGallery(page);
   await page.getByRole('button', { name: 'Open side sheet' }).click();
   const sheet = page.getByRole('dialog', { name: 'Green Valley School' });
-  expect((await sheet.boundingBox())?.width).toBe(375);
+  // A fixed element's full width: a classic scrollbar takes some of the 375, and the sheet must fit what is left.
+  const visible = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;top:0;left:0;right:0;height:1px';
+    document.body.append(probe);
+    const width = probe.getBoundingClientRect().width;
+    probe.remove();
+    return width;
+  });
+  expect((await sheet.boundingBox())?.width).toBe(visible);
   await page.keyboard.press('Escape');
 
   await page.getByRole('button', { name: 'Open confirm dialog' }).click();
   const box = await page.getByRole('dialog').boundingBox();
-  expect(box?.width).toBe(375);
+  expect(box?.width).toBe(visible);
   expect((box?.y ?? 0) + (box?.height ?? 0)).toBeCloseTo(800, 0);
 });
 

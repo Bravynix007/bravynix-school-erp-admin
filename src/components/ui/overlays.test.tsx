@@ -178,7 +178,12 @@ describe('SideSheet', () => {
         x
       </SideSheet>,
     );
-    expect(screen.getByRole('dialog')).toHaveClass('w-[560px]', 'max-xl:w-[480px]', 'max-md:w-screen');
+    expect(screen.getByRole('dialog')).toHaveClass(
+      'w-[560px]',
+      'max-xl:w-[480px]',
+      'max-md:inset-x-0',
+      'max-md:w-auto',
+    );
   });
 });
 
@@ -300,6 +305,27 @@ describe('Toast', () => {
   });
 });
 
+describe('ModalDialog offline line', () => {
+  afterEach(() => {
+    Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: true });
+  });
+
+  it('tells the person inside the dialog when the network goes, through a status region mounted with it', () => {
+    render(
+      <Dialog open onClose={() => {}} title="Set a rate">
+        <p>Body</p>
+      </Dialog>,
+    );
+    const status = screen.getAllByRole('status')[0]!;
+    expect(status).toBeEmptyDOMElement();
+    act(() => {
+      Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: false });
+      window.dispatchEvent(new Event('offline'));
+    });
+    expect(status).toHaveTextContent("You're offline. Changes can't be saved.");
+  });
+});
+
 describe('Dialog reopened', () => {
   it('shows fresh content each time it opens', () => {
     function Harness() {
@@ -337,6 +363,20 @@ describe('Toast review fixes', () => {
         <Raise run={run} />
       </ToastProvider>,
     );
+
+  it('folds errors beyond two into a Show more button, and keeps none lost', () => {
+    setup((t) => t.error('Could not save'));
+    for (let i = 0; i < 4; i++) fireEvent.click(screen.getByText('go'));
+    expect(screen.getAllByText('Could not save')).toHaveLength(2);
+    const more = screen.getByRole('button', { name: 'Show 2 more' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(more);
+    expect(screen.getAllByText('Could not save')).toHaveLength(4);
+    expect(screen.getByRole('button', { name: 'Show fewer errors' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
 
   it('uses the marigold ring on its Ink background (B1)', () => {
     setup((t) => t.success('Saved'));
