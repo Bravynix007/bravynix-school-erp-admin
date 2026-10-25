@@ -177,3 +177,26 @@ test('the stacked table keeps row and cell roles at 375 px', async ({ page, brow
   expect(snapshot).toContain('- cell');
   expect(snapshot).toContain('- columnheader');
 });
+
+test('Load more keeps focus in the page, also on the final click', async ({ page }) => {
+  await signedInGallery(page);
+  const more = page.getByRole('button', { name: 'Load more' });
+  await more.scrollIntoViewIfNeeded();
+  for (let i = 0; i < 3; i++) {
+    await more.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText(`Showing ${20 + i * 10} entries`)).toBeVisible();
+    await expect(more).toBeFocused();
+  }
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('That is all of them')).toBeFocused();
+});
+
+test('the shortcuts switch has a visible label on a phone too', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await signedInGallery(page);
+  const toggle = page.getByRole('switch', { name: 'Single-key shortcuts' });
+  await expect(toggle).toContainText('Shortcuts');
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});

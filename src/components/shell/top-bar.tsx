@@ -15,7 +15,7 @@ export function TopBar() {
   const [failed, setFailed] = useState(false);
   const shortcuts = useShortcutsEnabled();
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-line-subtle bg-surface px-6 lg:px-8">
+    <header className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line-subtle bg-surface px-6 py-2 lg:px-8">
       <div className="flex items-center gap-3">
         <span className="text-h3 font-semibold lg:hidden">BravyNix Console</span>
         {env.NEXT_PUBLIC_APP_ENV !== 'production' ? (
@@ -27,7 +27,7 @@ export function TopBar() {
       <div className="flex items-center gap-3">
         <Switch
           label="Single-key shortcuts"
-          labelClassName="max-lg:sr-only"
+          shortLabel="Shortcuts"
           checked={shortcuts}
           onChange={setShortcutsEnabled}
         />

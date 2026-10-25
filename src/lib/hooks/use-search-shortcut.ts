@@ -16,16 +16,13 @@ function onKeyDown(event: KeyboardEvent): void {
   if (slash && !readShortcutsEnabled()) return;
   // Behind a modal the page is inert; do not pull focus out of it.
   if (document.querySelector('dialog[open], [aria-modal="true"]')) return;
-  if (
-    slash &&
-    (event.target as HTMLElement | null)?.closest('input,textarea,select,[contenteditable="true"]')
-  )
-    return;
-  const target = searches.map((ref) => ref.current).find((el) => el?.isConnected);
-  if (!target) return;
+  const typing = event.target as HTMLElement | null;
+  if (slash && (typing?.isContentEditable || typing?.closest('input,textarea,select'))) return;
+  const search = searches.map((ref) => ref.current).find((el) => el?.isConnected);
+  if (!search) return;
   event.preventDefault();
-  target.focus();
-  target.select();
+  search.focus();
+  search.select();
 }
 
 /**

@@ -238,7 +238,7 @@ function Gallery() {
               shown={shown}
               noun="entries"
               hasMore={shown < ALL.length}
-              onLoadMore={() => setShown((n) => n + 10)}
+              onLoadMore={() => setShown((n) => Math.min(n + 10, ALL.length))}
             />
           }
         />
