@@ -44,6 +44,7 @@ interface Demo {
   code: string;
   status: 'Active' | 'Paused' | 'Inactive';
   seats: number;
+  owner: string;
 }
 
 const ALL: Demo[] = Array.from({ length: 47 }, (_, i) => ({
@@ -54,6 +55,11 @@ const ALL: Demo[] = Array.from({ length: 47 }, (_, i) => ({
   code: `INS-${String(i + 1).padStart(3, '0')}`,
   status: (['Active', 'Paused', 'Inactive'] as const)[i % 3]!,
   seats: 120 + ((i * 97) % 1800),
+  // One long address: a table must not clip it on a phone.
+  owner:
+    i === 0
+      ? 'lakshmi.narayanan.venkataramanan@sri-vidya-educational-society.example'
+      : `owner${i + 1}@example.test`,
 }));
 
 const PAGE_SIZE = 20;
@@ -135,6 +141,7 @@ function Gallery() {
       header: 'Status',
       cell: (r) => <StatusChip tone={statusTone.tenant[r.status]} label={r.status} />,
     },
+    { key: 'owner', header: 'Owner email', cell: (r) => r.owner },
     { key: 'seats', header: 'Seats', align: 'end', sortable: true, cell: (r) => r.seats },
   ];
 
