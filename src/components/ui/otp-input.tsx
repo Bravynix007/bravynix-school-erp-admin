@@ -96,8 +96,8 @@ export function OtpInput({ value, onChange, onComplete, label, error, disabled, 
             }}
             onFocus={(event) => event.target.select()}
             className={cn(
-              'h-12 w-11 rounded-md border bg-surface text-center text-h2 font-semibold text-ink tabular outline-none',
-              'focus:border-focus focus:ring-2 focus:ring-focus/30',
+              'h-12 w-11 rounded-md border bg-surface text-center text-h2 font-semibold text-ink tabular',
+              'focus:border-focus focus:outline-2 focus:outline-offset-2 focus:outline-focus',
               error ? 'border-error' : 'border-field hover:border-ink-secondary',
             )}
           />

@@ -6,7 +6,7 @@ import { cn } from '@/lib/cn';
 export function fieldBox(error?: string): string {
   return cn(
     'rounded-md border bg-surface transition-colors',
-    'focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/30',
+    'focus-within:border-focus focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus',
     error ? 'border-error' : 'border-field hover:border-ink-secondary',
   );
 }

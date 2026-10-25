@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -31,11 +31,11 @@ describe('DataTable', () => {
   it('is a named table with column headers and the rows', () => {
     render(<DataTable {...base} />);
     const table = screen.getByRole('table', { name: 'Institutions' });
-    expect(
-      within(table)
-        .getAllByRole('columnheader')
-        .map((h) => h.textContent),
-    ).toEqual(['Institution', 'Code', 'Seats']);
+    // jsdom has no media queries, so a sortable header holds both its button and its narrow-screen text.
+    const headers = within(table).getAllByRole('columnheader');
+    expect(headers).toHaveLength(3);
+    expect(headers[1]).toHaveTextContent(/^Code$/);
+    expect(headers[0]).toHaveTextContent(/^Institution/);
     expect(within(table).getAllByRole('row')).toHaveLength(3);
   });
 
@@ -64,7 +64,7 @@ describe('DataTable', () => {
     await userEvent.click(button);
     expect(onRowOpen).toHaveBeenCalledTimes(2);
     await userEvent.click(screen.getByText('LVA-002'));
-    expect(onRowOpen).toHaveBeenCalledTimes(3);
+    await waitFor(() => expect(onRowOpen).toHaveBeenCalledTimes(3));
     expect(onRowOpen).toHaveBeenLastCalledWith(rows[1]);
   });
 
@@ -242,5 +242,69 @@ describe('FilterBar', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
     expect(screen.getByRole('searchbox')).toHaveValue('');
     expect(screen.getByRole('combobox', { name: 'Status' })).toHaveDisplayValue('Status');
+  });
+});
+
+describe('DataTable below md', () => {
+  it('offers a visible Sort by control that sorts like the header buttons', async () => {
+    const onSort = vi.fn();
+    render(<DataTable {...base} onSort={onSort} sort={{ key: 'seats', direction: 'asc' }} />);
+    const select = screen.getByLabelText('Sort by');
+    expect(select).toHaveValue('seats');
+    await userEvent.selectOptions(select, 'name');
+    expect(onSort).toHaveBeenLastCalledWith('name');
+    await userEvent.click(screen.getByRole('button', { name: 'Sorted ascending. Switch to descending' }));
+    expect(onSort).toHaveBeenLastCalledWith('seats');
+  });
+
+  it('shows the default order until a column is chosen, and no control when nothing sorts', () => {
+    const { rerender } = render(<DataTable {...base} onSort={vi.fn()} />);
+    expect(screen.getByLabelText('Sort by')).toHaveValue('');
+    expect(screen.queryByRole('button', { name: /^Sorted / })).not.toBeInTheDocument();
+    rerender(
+      <DataTable {...base} columns={columns.map((c) => ({ ...c, sortable: false }))} onSort={vi.fn()} />,
+    );
+    expect(screen.queryByLabelText('Sort by')).not.toBeInTheDocument();
+  });
+
+  it('hides the header sort buttons from narrow screens, where the header is invisible', () => {
+    render(<DataTable {...base} onSort={vi.fn()} />);
+    for (const button of within(screen.getAllByRole('rowgroup')[0]!).getAllByRole('button')) {
+      expect(button).toHaveClass('max-md:hidden');
+    }
+  });
+});
+
+describe('DataTable row click timing', () => {
+  it('does not open the row when a word is double-clicked to select it', async () => {
+    vi.useFakeTimers();
+    try {
+      const onRowOpen = vi.fn();
+      render(<DataTable {...base} onRowOpen={onRowOpen} />);
+      const cell = screen.getByText('LVA-002');
+      fireEvent.click(cell, { detail: 1 });
+      fireEvent.click(cell, { detail: 2 });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(onRowOpen).not.toHaveBeenCalled();
+      fireEvent.click(cell, { detail: 1 });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(onRowOpen).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('drops a pending open when the table goes away', async () => {
+    vi.useFakeTimers();
+    try {
+      const onRowOpen = vi.fn();
+      const { unmount } = render(<DataTable {...base} onRowOpen={onRowOpen} />);
+      fireEvent.click(screen.getByText('LVA-002'), { detail: 1 });
+      unmount();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(onRowOpen).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
