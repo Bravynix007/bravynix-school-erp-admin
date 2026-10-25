@@ -168,13 +168,13 @@ export function DataTable<Row>({
                       'px-4 text-body text-ink',
                       dense ? 'py-2' : 'py-3',
                       column.align === 'end' ? 'text-right tabular' : 'text-left',
-                      'max-md:flex max-md:justify-between max-md:gap-4 max-md:p-0 max-md:text-left',
+                      'max-md:flex max-md:min-w-0 max-md:justify-between max-md:gap-4 max-md:p-0 max-md:text-left',
                     )}
                   >
                     <span aria-hidden="true" className="hidden text-caption text-ink-secondary max-md:inline">
                       {column.header}
                     </span>
-                    <span className="min-w-0 max-md:text-right">
+                    <span className="min-w-0 max-md:text-right max-md:[overflow-wrap:anywhere]">
                       {onRowOpen && column.key === primaryKey ? (
                         <button
                           type="button"

@@ -200,3 +200,25 @@ test('the shortcuts switch has a visible label on a phone too', async ({ page })
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+for (const width of [320, 375]) {
+  test(`a long email in a stacked row is not clipped at ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await signedInGallery(page);
+    const email = page
+      .getByText('lakshmi.narayanan.venkataramanan@sri-vidya-educational-society.example')
+      .first();
+    await email.scrollIntoViewIfNeeded();
+    const { cell, wrapper } = await email.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const rects = [...range.getClientRects()];
+      const table = el.closest('table')!.parentElement!;
+      return {
+        cell: Math.max(...rects.map((r) => r.right)),
+        wrapper: table.getBoundingClientRect().right,
+      };
+    });
+    expect(cell).toBeLessThanOrEqual(wrapper + 0.5);
+  });
+}
