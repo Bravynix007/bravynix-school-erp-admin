@@ -1,0 +1,68 @@
+'use client';
+
+import { useEffect, useRef, type DialogHTMLAttributes, type ReactNode, type SyntheticEvent } from 'react';
+import { cn } from '@/lib/cn';
+
+export interface ModalDialogProps extends Omit<DialogHTMLAttributes<HTMLDialogElement>, 'open' | 'onClose'> {
+  open: boolean;
+  onClose: () => void;
+  /** Clicking the dimmed area closes it. Off for dialogs that ask a question. */
+  dismissOnBackdrop?: boolean;
+  children: ReactNode;
+}
+
+/**
+ * The native modal `<dialog>`: the browser traps focus, makes the page behind
+ * inert, closes on Esc and returns focus to the control that opened it
+ * (DESIGN.md 15). This wrapper only keeps it in step with `open` and locks
+ * the page scroll while it is up.
+ */
+export function ModalDialog({
+  open,
+  onClose,
+  dismissOnBackdrop = false,
+  className,
+  children,
+  ...rest
+}: ModalDialogProps) {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
+  // Esc asks to close; the owner decides (a busy dialog can refuse), so the browser's own close is cancelled.
+  function onCancel(event: SyntheticEvent<HTMLDialogElement>) {
+    event.preventDefault();
+    onClose();
+  }
+
+  function onBackdrop(event: SyntheticEvent<HTMLDialogElement, MouseEvent>) {
+    // A click on the dialog element itself (not on its content) is a click on the backdrop.
+    if (dismissOnBackdrop && event.target === event.currentTarget) onClose();
+  }
+
+  return (
+    <dialog
+      ref={ref}
+      onCancel={onCancel}
+      onClick={onBackdrop}
+      className={cn('backdrop:bg-overlay m-0 max-h-none max-w-none bg-transparent p-0 text-ink', className)}
+      {...rest}
+    >
+      {open ? children : null}
+    </dialog>
+  );
+}
