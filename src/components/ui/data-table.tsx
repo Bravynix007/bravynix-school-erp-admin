@@ -1,6 +1,6 @@
 'use client';
 
-import type { MouseEvent, ReactNode } from 'react';
+import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from 'react';
 import { IconArrowDown, IconArrowUp, IconArrowsSort } from '@tabler/icons-react';
 import { cn } from '@/lib/cn';
 import { TableSkeleton } from './skeleton';
@@ -40,6 +40,9 @@ export interface DataTableProps<Row> {
   footer?: ReactNode;
 }
 
+/** A click on plain row text waits this long for a second click, so double-clicking a word selects it instead of opening the row. */
+const ROW_CLICK_DELAY_MS = 250;
+
 const INTERACTIVE =
   'a,button,input,select,textarea,label,summary,[contenteditable],[role="menuitem"],[role="button"],[role="checkbox"],[role="switch"],[role="link"],[role="tab"]';
 
@@ -66,6 +69,9 @@ export function DataTable<Row>({
   dense,
   footer,
 }: DataTableProps<Row>) {
+  const pendingOpen = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(pendingOpen.current), []);
+
   if (loading) return <TableSkeleton columns={Math.max(columns.length, 2)} />;
   if (rows.length === 0 && empty) return <>{empty}</>;
 
@@ -74,16 +80,24 @@ export function DataTable<Row>({
   function clickRow(event: MouseEvent<HTMLTableRowElement>, row: Row) {
     if (!onRowOpen) return;
     if ((event.target as HTMLElement).closest(INTERACTIVE)) return;
-    // Selecting text (to copy a code) is not a request to open the row.
+    clearTimeout(pendingOpen.current);
+    // A second click of a double-click: the person is selecting a word (to copy a code), not opening the row.
+    if (event.detail > 1) return;
+    // So is dragging across text.
     if (window.getSelection()?.toString()) return;
-    onRowOpen(row);
+    pendingOpen.current = setTimeout(() => {
+      if (!window.getSelection()?.toString()) onRowOpen(row);
+    }, ROW_CLICK_DELAY_MS);
   }
+
+  const sortable = columns.filter((c) => c.sortable);
 
   return (
     <div className="overflow-clip rounded-lg border border-line bg-surface">
       <div role="status" className="sr-only">
         {refreshing ? 'Refreshing the list' : ''}
       </div>
+      {onSort && sortable.length > 0 ? <SortControl columns={sortable} sort={sort} onSort={onSort} /> : null}
       {/* Explicit roles survive the display changes below md, which can drop native table semantics in WebKit. */}
       <table
         role="table"
@@ -114,26 +128,30 @@ export function DataTable<Row>({
                   )}
                 >
                   {column.sortable ? (
-                    <button
-                      type="button"
-                      onClick={() => onSort?.(column.key)}
-                      className={cn(
-                        'inline-flex items-center gap-1 rounded-sm font-medium hover:text-ink',
-                        column.align === 'end' && 'flex-row-reverse',
-                        active && 'text-ink',
-                      )}
-                    >
-                      {column.header}
-                      {active ? (
-                        sort.direction === 'asc' ? (
-                          <IconArrowUp size={14} aria-hidden="true" />
+                    <>
+                      {/* Below md this header is visually hidden, so the button goes too (no invisible focus stop); SortControl takes over. */}
+                      <span className="md:hidden">{column.header}</span>
+                      <button
+                        type="button"
+                        onClick={() => onSort?.(column.key)}
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-sm font-medium hover:text-ink max-md:hidden',
+                          column.align === 'end' && 'flex-row-reverse',
+                          active && 'text-ink',
+                        )}
+                      >
+                        {column.header}
+                        {active ? (
+                          sort.direction === 'asc' ? (
+                            <IconArrowUp size={14} aria-hidden="true" />
+                          ) : (
+                            <IconArrowDown size={14} aria-hidden="true" />
+                          )
                         ) : (
-                          <IconArrowDown size={14} aria-hidden="true" />
-                        )
-                      ) : (
-                        <IconArrowsSort size={14} aria-hidden="true" className="text-ink-tertiary" />
-                      )}
-                    </button>
+                          <IconArrowsSort size={14} aria-hidden="true" className="text-ink-tertiary" />
+                        )}
+                      </button>
+                    </>
                   ) : (
                     column.header
                   )}
@@ -195,6 +213,60 @@ export function DataTable<Row>({
         </tbody>
       </table>
       {footer ? <div className="border-t border-line">{footer}</div> : null}
+    </div>
+  );
+}
+
+/** Below md the header row is hidden, so sorting moves to a visible "Sort by" select and a direction button. */
+function SortControl<Row>({
+  columns,
+  sort,
+  onSort,
+}: {
+  columns: Column<Row>[];
+  sort: DataTableProps<Row>['sort'];
+  onSort: (key: string) => void;
+}) {
+  const id = useId();
+  const next = sort?.direction === 'asc' ? 'descending' : 'ascending';
+  return (
+    <div className="flex items-center gap-2 border-b border-line bg-sunken px-4 py-2 md:hidden">
+      <label htmlFor={id} className="text-label font-medium text-ink-secondary">
+        Sort by
+      </label>
+      <select
+        id={id}
+        value={sort?.key ?? ''}
+        onChange={(event) => {
+          if (event.target.value) onSort(event.target.value);
+        }}
+        className="h-10 min-w-0 flex-1 rounded-md border border-field bg-surface px-3 text-label text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+      >
+        {sort ? null : (
+          <option value="" disabled>
+            Default order
+          </option>
+        )}
+        {columns.map((c) => (
+          <option key={c.key} value={c.key}>
+            {c.header}
+          </option>
+        ))}
+      </select>
+      {sort ? (
+        <button
+          type="button"
+          onClick={() => onSort(sort.key)}
+          aria-label={`Sorted ${sort.direction === 'asc' ? 'ascending' : 'descending'}. Switch to ${next}`}
+          className="inline-flex size-10 items-center justify-center rounded-md border border-field bg-surface text-ink"
+        >
+          {sort.direction === 'asc' ? (
+            <IconArrowUp size={16} aria-hidden="true" />
+          ) : (
+            <IconArrowDown size={16} aria-hidden="true" />
+          )}
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -76,7 +76,7 @@ export function FilterBar({
             key={f.key}
             className={cn(
               'relative inline-flex h-10 items-center rounded-md border bg-surface text-label font-medium text-ink',
-              'focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/30',
+              'focus-within:border-focus focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus',
               f.value ? 'border-primary' : 'border-field hover:border-ink-secondary',
             )}
           >

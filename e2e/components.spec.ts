@@ -73,6 +73,16 @@ test('sorting and paging work from the keyboard and set aria-sort', async ({ pag
   await expect(page.getByText('Showing 21–40 of 47 Institutions')).toBeVisible();
 });
 
+test('on a phone the table sorts from a visible "Sort by" control', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await signedInGallery(page);
+  const table = page.getByRole('table', { name: 'Institutions' });
+  await page.getByLabel('Sort by').selectOption('seats');
+  await expect(table.getByRole('columnheader', { name: /Seats/ })).toHaveAttribute('aria-sort', 'ascending');
+  await page.getByRole('button', { name: /Switch to descending/ }).click();
+  await expect(table.getByRole('columnheader', { name: /Seats/ })).toHaveAttribute('aria-sort', 'descending');
+});
+
 test('a row opens from its button and is marked as the current row', async ({ page }) => {
   await signedInGallery(page);
   await page.getByRole('button', { name: /^Lakeview Academy 2 INS-002$/ }).click();
