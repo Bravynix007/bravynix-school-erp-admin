@@ -76,7 +76,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     const observer = new ResizeObserver(() => {
       const height = element.getBoundingClientRect().height;
-      root.style.scrollPaddingBottom = height > 0 ? `${Math.ceil(height) + 32}px` : '';
+      // The empty regions and their gap measure a few pixels: that is no stack.
+      root.style.scrollPaddingBottom = height > 16 ? `${Math.ceil(height) + 32}px` : '';
     });
     observer.observe(element);
     return () => {
@@ -114,6 +115,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   const errors = items.filter((t) => t.kind === 'error');
+  // Once the errors are back to what fits, the next pile starts folded again.
+  if (showAllErrors && errors.length <= ERRORS_SHOWN) setShowAllErrors(false);
 
   return (
     <ToastContext.Provider value={api}>
@@ -142,7 +145,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             onClick={() => setShowAllErrors((all) => !all)}
             className="on-frame pointer-events-auto self-start rounded-md bg-frame px-3 py-1.5 text-label font-medium text-on-primary shadow-md"
           >
-            {showAllErrors ? 'Show fewer errors' : `Show ${errors.length - ERRORS_SHOWN} more`}
+            {showAllErrors
+              ? 'Show fewer errors'
+              : `Show ${errors.length - ERRORS_SHOWN} more ${errors.length - ERRORS_SHOWN === 1 ? 'error' : 'errors'}`}
           </button>
         ) : null}
       </div>

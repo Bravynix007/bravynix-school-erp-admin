@@ -205,25 +205,27 @@ test('four error toasts on a 320 x 256 screen (400% zoom) leave the page usable 
 test('going offline while a form dialog is open is shown and announced inside the dialog', async ({
   page,
   context,
+  browserName,
 }) => {
   await gallery(page);
   await page.getByRole('button', { name: 'Open form dialog' }).click();
   const dialog = page.getByRole('dialog', { name: 'Set a rate' });
   await expect(dialog).toBeVisible();
   await context.setOffline(true);
-  await page.waitForTimeout(300);
+  // In every browser: the line is inside the dialog, in a live region that was mounted before the change.
+  await expect(dialog.getByRole('status').filter({ hasText: /offline/i })).toHaveText(
+    "You're offline. Changes can't be saved.",
+  );
   if (shots) await page.screenshot({ path: `${shots}/offline-under-dialog.png` });
-  const cdp = await context.newCDPSession(page);
-  const { nodes } = (await cdp.send('Accessibility.getFullAXTree')) as {
-    nodes: { ignored: boolean; name?: { value?: string } }[];
-  };
-  const spoken = nodes.some((n) => !n.ignored && /offline/i.test(n.name?.value ?? ''));
-  const inside = await dialog.getByText(/offline/i).count();
+  if (browserName === 'chromium') {
+    // The accessibility tree itself, which only Chromium exposes through CDP.
+    const cdp = await context.newCDPSession(page);
+    const { nodes } = (await cdp.send('Accessibility.getFullAXTree')) as {
+      nodes: { ignored: boolean; name?: { value?: string } }[];
+    };
+    expect(nodes.some((n) => !n.ignored && /offline/i.test(n.name?.value ?? ''))).toBe(true);
+  }
   await context.setOffline(false);
-  expect({ inAccessibilityTree: spoken, insideDialog: inside > 0 }).toEqual({
-    inAccessibilityTree: true,
-    insideDialog: true,
-  });
 });
 
 test('axe is clean with toasts up, offline, and on the 403 and 404 panels', async ({ page, context }) => {

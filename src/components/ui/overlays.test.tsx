@@ -368,7 +368,7 @@ describe('Toast review fixes', () => {
     setup((t) => t.error('Could not save'));
     for (let i = 0; i < 4; i++) fireEvent.click(screen.getByText('go'));
     expect(screen.getAllByText('Could not save')).toHaveLength(2);
-    const more = screen.getByRole('button', { name: 'Show 2 more' });
+    const more = screen.getByRole('button', { name: 'Show 2 more errors' });
     expect(more).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(more);
     expect(screen.getAllByText('Could not save')).toHaveLength(4);
