@@ -29,7 +29,9 @@ export function loginErrorMessage(error: unknown): string {
         ? `Too many codes requested. Try again in ${wait}.`
         : 'Too many codes requested. Try again later.';
     case 'AUTH_LOCKED':
-      return 'Too many failed sign-ins. This email is locked for 30 minutes.';
+      return error.retryAfterSeconds
+        ? `Too many failed sign-ins. Try again in ${lockDuration(error.retryAfterSeconds)}.`
+        : 'Too many failed sign-ins. This email is locked for 30 minutes.';
     case 'RATE_LIMITED':
       return 'Too many attempts from this network. Try again shortly.';
     case 'ACCOUNT_BLOCKED':
@@ -41,6 +43,11 @@ export function loginErrorMessage(error: unknown): string {
       return 'Incorrect authenticator code. Check the time on your phone and try again.';
     case 'MFA_TOKEN_EXPIRED':
       return 'This sign-in took too long. Start again.';
+    // The token's state and the account's disagree, for instance after setup in another tab.
+    case 'MFA_ALREADY_ENROLLED':
+      return 'An authenticator app is already set up for this account. Start again and enter its code.';
+    case 'MFA_NOT_ENROLLED':
+      return 'Set up your authenticator app first. Start again.';
     case 'NETWORK_ERROR':
       return "Can't reach the server. Check your connection and try again.";
     default:
@@ -48,11 +55,26 @@ export function loginErrorMessage(error: unknown): string {
   }
 }
 
+/** A lock of 30 minutes or 24 hours, in the words the lockout email uses. */
+function lockDuration(seconds: number): string {
+  const hours = Math.round(seconds / 3600);
+  if (seconds >= 3600) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+}
+
 /** Errors after which the current code or MFA token is dead and the flow restarts. */
 export function isRestartError(error: unknown): boolean {
   return (
     error instanceof ApiError &&
-    ['OTP_EXPIRED', 'OTP_ATTEMPTS_EXCEEDED', 'AUTH_LOCKED', 'MFA_TOKEN_EXPIRED'].includes(error.code)
+    [
+      'OTP_EXPIRED',
+      'OTP_ATTEMPTS_EXCEEDED',
+      'AUTH_LOCKED',
+      'MFA_TOKEN_EXPIRED',
+      'MFA_ALREADY_ENROLLED',
+      'MFA_NOT_ENROLLED',
+    ].includes(error.code)
   );
 }
 

@@ -20,7 +20,8 @@ export interface LoginTokens {
   person: {
     id: string;
     email: string;
-    firstName: string;
+    /** Null until the person's name is known (API design 10.2). */
+    firstName: string | null;
     lastName: string | null;
     preferredLanguage: string;
   };
