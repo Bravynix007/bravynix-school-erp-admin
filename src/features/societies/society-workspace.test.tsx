@@ -122,4 +122,11 @@ describe('SocietyWorkspace', () => {
     renderScreen(<SocietyWorkspace />);
     expect(screen.getByText(/no longer exists/)).toBeInTheDocument();
   });
+
+  it('treats an empty ?id= as no ID, and does not fetch the list as if it were one Society', () => {
+    id = '';
+    renderScreen(<SocietyWorkspace />);
+    expect(screen.getByText(/no longer exists/)).toBeInTheDocument();
+    expect(api.get).not.toHaveBeenCalled();
+  });
 });

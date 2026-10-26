@@ -10,8 +10,9 @@ import { EditSociety } from './edit-society';
 const push = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
-  useSearchParams: () => ({ get: () => 's1' }),
+  useSearchParams: () => ({ get: () => id }),
 }));
+let id: string | null = 's1';
 
 const api = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
 vi.mock('./societies-api', async (original) => ({
@@ -20,6 +21,7 @@ vi.mock('./societies-api', async (original) => ({
 }));
 
 beforeEach(() => {
+  id = 's1';
   api.get.mockReset().mockResolvedValue(society());
   api.update.mockReset();
   push.mockReset();
@@ -28,6 +30,13 @@ beforeEach(() => {
 const save = () => userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
 describe('EditSociety', () => {
+  it.each([null, ''])('shows not found for the ID %j, and does not ask the API', async (missing) => {
+    id = missing;
+    renderScreen(<EditSociety />);
+    expect(await screen.findByText(/no longer exists/)).toBeInTheDocument();
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
   it('starts from what is stored and shows the code read-only', async () => {
     renderScreen(<EditSociety />);
     expect(await screen.findByLabelText(/Society name/)).toHaveValue('Sri Vidya Educational Society');
