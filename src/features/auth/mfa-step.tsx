@@ -12,6 +12,7 @@ import { ApiError } from '@/lib/api/api-error';
 import { authApi, type LoginTokens } from '@/lib/auth/auth-api';
 import { formatCountdown, useCountdown } from '@/lib/hooks/use-countdown';
 import { isRestartError, loginErrorMessage } from './login-errors';
+import { RestartPanel } from './restart-panel';
 
 /**
  * Screen 3: the authenticator code. On first login it enrols first: QR code,
@@ -49,14 +50,7 @@ export function MfaStep({
 
   const failure = verify.error ?? enrol.error;
   if (failure && isRestartError(failure)) {
-    return (
-      <div className="flex flex-col gap-5">
-        <InlineAlert tone="error">{loginErrorMessage(failure)}</InlineAlert>
-        <Button className="w-full" onClick={onRestart}>
-          Start again
-        </Button>
-      </div>
-    );
+    return <RestartPanel message={loginErrorMessage(failure)} onRestart={onRestart} />;
   }
 
   return (

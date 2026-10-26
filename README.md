@@ -38,6 +38,25 @@ is installed (as in Claude Code cloud sessions), point Playwright at it and run 
 `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:e2e -- --project=chromium`. CI
 runs all three.
 
+## Live checks against a real API
+
+`npm run test:e2e:live` drives the built console in Chromium against a running backend: first
+sign-in with authenticator setup, a wrong authenticator code, the refresh cookie surviving a
+reload, log out, and "Start again" after five wrong codes. It exists because the other e2e specs
+mock the API, so it is what proves the two repositories agree. Run it before changing anything
+in `src/lib/auth`, `src/lib/api` or `src/features/auth`; CI does not run it.
+
+It needs a **fresh** database (the first sign-in enrols the seeded Super Admins `sa1` and `sa2`)
+and the backend started with a code echo. From the backend repository:
+
+```bash
+npm run db:migrate && npm run db:seed          # a new local database, two-worlds scenario
+PORT=3000 CORS_ORIGINS=http://localhost:3001 OTP_DEV_ECHO=true EMAIL_DRIVER=memory npm start
+```
+
+Then here: `npm run build:local && npm run test:e2e:live`. The run takes about a minute, because
+the API makes a second code request for one email wait out its 60-second resend gap.
+
 ## Configuration
 
 Read at build time and inlined into the bundle, so each environment gets its own build.

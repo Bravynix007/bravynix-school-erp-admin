@@ -8,7 +8,8 @@ import { OtpInput } from '@/components/ui/otp-input';
 import { ApiError } from '@/lib/api/api-error';
 import { authApi, isMfaChallenge, type LoginTokens, type MfaChallenge } from '@/lib/auth/auth-api';
 import { formatCountdown, useCountdown } from '@/lib/hooks/use-countdown';
-import { isRestartError, loginErrorMessage, maskEmail } from './login-errors';
+import { isLockedOut, isRestartError, loginErrorMessage, maskEmail } from './login-errors';
+import { RestartPanel } from './restart-panel';
 
 /** Screen 2: six digit boxes, Verify, resend timer, "Use a different email". */
 export function CodeStep({
@@ -51,6 +52,13 @@ export function CodeStep({
   const codeError =
     verify.error && !isRestartError(verify.error) ? loginErrorMessage(verify.error) : undefined;
   const bandError = error && !codeError ? loginErrorMessage(error) : null;
+
+  // A locked email cannot be sent a new code, so there is nothing to type or resend: only a way back.
+  // Either call may carry the lock.
+  const locked = [verify.error, resend.error].find(isLockedOut);
+  if (locked) {
+    return <RestartPanel message={loginErrorMessage(locked)} onRestart={onChangeEmail} />;
+  }
 
   return (
     <form

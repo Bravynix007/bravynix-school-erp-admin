@@ -83,6 +83,36 @@ describe('LoginFlow', () => {
     expect(await screen.findByText('Incorrect code. 3 attempts left.')).toBeInTheDocument();
   });
 
+  it('after the fifth wrong code says how long the email is locked and offers only a fresh start', async () => {
+    await reachCodeStep();
+    authApi.verifyOtp.mockRejectedValue(new ApiError(401, 'OTP_ATTEMPTS_EXCEEDED', 'x', 'r', [], {}, 1800));
+    await typeCode('111111');
+    expect(await screen.findByText('Too many incorrect codes. Try again in 30 minutes.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Resend code' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Resend code in/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start again' })).toHaveFocus();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Start again' }));
+    expect(await screen.findByLabelText('Email')).toBeInTheDocument();
+  });
+
+  it('shows the lock when it comes from Resend after a wrong code', async () => {
+    authApi.requestOtp.mockResolvedValueOnce({ resendAfterSeconds: 0, expiresInSeconds: 600 });
+    renderFlow();
+    await userEvent.type(screen.getByLabelText('Email'), 'ananya.rao@bravynix.in');
+    await userEvent.click(screen.getByRole('button', { name: 'Send code' }));
+    await screen.findByText('Check your email');
+
+    authApi.verifyOtp.mockRejectedValue(new ApiError(401, 'OTP_INVALID', 'x', 'r', [], { attemptsLeft: 1 }));
+    await typeCode('111111');
+    await screen.findByText('Incorrect code. 1 attempt left.');
+
+    authApi.requestOtp.mockRejectedValue(new ApiError(423, 'AUTH_LOCKED', 'x', 'r', [], {}, 1800));
+    await userEvent.click(await screen.findByRole('button', { name: 'Resend code' }));
+    expect(await screen.findByText('Too many failed sign-ins. Try again in 30 minutes.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start again' })).toHaveFocus();
+  });
+
   it('enrols the authenticator once on first login, then signs in', async () => {
     await reachCodeStep();
     authApi.verifyOtp.mockResolvedValue({ mfaRequired: true, mfaToken: 'mfa-1', mfaEnrolled: false });
@@ -148,8 +178,22 @@ describe('LoginFlow', () => {
     await screen.findByText('Enter the code from your authenticator app');
     await typeCode('135790');
     expect(await screen.findByText('This sign-in took too long. Start again.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start again' })).toHaveFocus();
     await userEvent.click(screen.getByRole('button', { name: 'Start again' }));
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
+  });
+
+  it('ends the sign-in on the fifth wrong authenticator code and moves focus to Start again', async () => {
+    await reachCodeStep();
+    authApi.verifyOtp.mockResolvedValue({ mfaRequired: true, mfaToken: 'mfa-2', mfaEnrolled: true });
+    authApi.verifyMfa.mockRejectedValue(new ApiError(401, 'MFA_INVALID', 'x', 'r', [], { attemptsLeft: 0 }));
+    await typeCode('482017');
+    await screen.findByText('Enter the code from your authenticator app');
+    await typeCode('135790');
+    expect(
+      await screen.findByText('Too many incorrect authenticator codes. Start again.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start again' })).toHaveFocus();
   });
 
   it('asks an enrolled Super Admin for the authenticator code only', async () => {
