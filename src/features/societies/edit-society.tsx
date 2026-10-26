@@ -13,6 +13,7 @@ import { LinkButton } from '@/components/ui/link-button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
 import { fieldErrorsOf } from '@/lib/api/field-errors';
+import { useOneAtATime } from '@/lib/hooks/use-one-at-a-time';
 import { profileErrors, profileOf, updateBody, type ProfileForm } from './society-form';
 import { SocietyProfileFields } from './society-profile-fields';
 import { societyWorkspaceHref } from './societies-list';
@@ -21,7 +22,8 @@ import { useSociety, useUpdateSociety } from './use-societies';
 
 /** PLT-05: edit the profile. The code is not editable here (API design 10.4b). */
 export function EditSociety() {
-  const id = useSearchParams().get('id');
+  // An empty `?id=` is no ID: it would fetch the list as if it were one Society.
+  const id = useSearchParams().get('id') || null;
   const query = useSociety(id);
 
   if (id === null) return <RecordNotFound listHref="/societies" listLabel="Societies" />;
@@ -43,6 +45,7 @@ function EditForm({ society, reload }: { society: SocietyDetail; reload: () => v
   const router = useRouter();
   const toast = useToast();
   const update = useUpdateSociety(society.id);
+  const oneAtATime = useOneAtATime();
   const [form, setForm] = useState<ProfileForm>(() => profileOf(society));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [unchanged, setUnchanged] = useState(false);
@@ -56,13 +59,18 @@ function EditForm({ society, reload }: { society: SocietyDetail; reload: () => v
     const body = updateBody(society, form);
     setUnchanged(body === null);
     if (body === null) return;
-    update.mutate(body, {
-      onSuccess: () => {
-        toast.success('Changes saved');
-        router.push(workspace);
-      },
-      onError: (error) => setErrors(fieldErrorsOf(error)),
-    });
+    oneAtATime((release) =>
+      update.mutate(body, {
+        onSuccess: () => {
+          toast.success('Changes saved');
+          router.push(workspace);
+        },
+        onError: (error) => {
+          release();
+          setErrors(fieldErrorsOf(error));
+        },
+      }),
+    );
   }
 
   return (
