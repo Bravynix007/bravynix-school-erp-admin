@@ -90,9 +90,27 @@ describe('LoginFlow', () => {
     expect(await screen.findByText('Too many incorrect codes. Try again in 30 minutes.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Resend code' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Resend code in/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start again' })).toHaveFocus();
 
     await userEvent.click(screen.getByRole('button', { name: 'Start again' }));
     expect(await screen.findByLabelText('Email')).toBeInTheDocument();
+  });
+
+  it('shows the lock when it comes from Resend after a wrong code', async () => {
+    authApi.requestOtp.mockResolvedValueOnce({ resendAfterSeconds: 0, expiresInSeconds: 600 });
+    renderFlow();
+    await userEvent.type(screen.getByLabelText('Email'), 'ananya.rao@bravynix.in');
+    await userEvent.click(screen.getByRole('button', { name: 'Send code' }));
+    await screen.findByText('Check your email');
+
+    authApi.verifyOtp.mockRejectedValue(new ApiError(401, 'OTP_INVALID', 'x', 'r', [], { attemptsLeft: 1 }));
+    await typeCode('111111');
+    await screen.findByText('Incorrect code. 1 attempt left.');
+
+    authApi.requestOtp.mockRejectedValue(new ApiError(423, 'AUTH_LOCKED', 'x', 'r', [], {}, 1800));
+    await userEvent.click(await screen.findByRole('button', { name: 'Resend code' }));
+    expect(await screen.findByText('Too many failed sign-ins. Try again in 30 minutes.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start again' })).toHaveFocus();
   });
 
   it('enrols the authenticator once on first login, then signs in', async () => {
