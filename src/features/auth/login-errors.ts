@@ -19,7 +19,10 @@ export function loginErrorMessage(error: unknown): string {
     case 'OTP_EXPIRED':
       return 'This code has expired. Request a new one.';
     case 'OTP_ATTEMPTS_EXCEEDED':
-      return 'Too many incorrect codes. Request a new one.';
+      // The fifth wrong code locks the email, and the answer says for how long (API design 6.2).
+      return error.retryAfterSeconds
+        ? `Too many incorrect codes. Try again in ${lockDuration(error.retryAfterSeconds)}.`
+        : 'Too many incorrect codes. Request a new one.';
     case 'OTP_RESEND_TOO_SOON':
       return wait
         ? `Wait ${wait} before asking for another code.`
@@ -55,12 +58,26 @@ export function loginErrorMessage(error: unknown): string {
   }
 }
 
-/** A lock of 30 minutes or 24 hours, in the words the lockout email uses. */
+/**
+ * A lock of 30 minutes or 24 hours, in the words the lockout email uses. It
+ * rounds up, so nobody tries again a minute early and is refused.
+ */
 function lockDuration(seconds: number): string {
-  const hours = Math.round(seconds / 3600);
-  if (seconds >= 3600) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
-  const minutes = Math.max(1, Math.round(seconds / 60));
+  if (seconds >= 3600) {
+    const hours = Math.ceil(seconds / 3600);
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  }
+  const minutes = Math.max(1, Math.ceil(seconds / 60));
   return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+}
+
+/** The email is locked: a new code cannot be requested, so the screen offers a fresh start rather than Resend. */
+export function isLockedOut(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.code === 'AUTH_LOCKED' ||
+      (error.code === 'OTP_ATTEMPTS_EXCEEDED' && error.retryAfterSeconds !== null))
+  );
 }
 
 /** Errors after which the current code or MFA token is dead and the flow restarts. */
