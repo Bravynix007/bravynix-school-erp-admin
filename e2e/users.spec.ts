@@ -85,3 +85,38 @@ test('Society Owners are listed with their Society, and open to their account ac
   await expect(sheet.getByRole('link', { name: 'Sri Vidya Educational Society' })).toBeVisible();
   await expect(sheet.getByRole('button', { name: 'Remove Super Admin' })).toHaveCount(0);
 });
+
+test('focus goes back to what opened a dialog, and to the row when the sheet closes', async ({ page }) => {
+  await signIn(page);
+  await mockApi(page, 'platform/super-admins', () => envelope([admin()]));
+  await mockApi(page, 'platform/users/u1/block', () => envelope(admin()));
+  await page.goto('/users/');
+
+  await page.getByRole('button', { name: 'Add Super Admin' }).click();
+  await page.getByRole('dialog', { name: 'Add Super Admin' }).getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('button', { name: 'Add Super Admin' })).toBeFocused();
+
+  await page.getByRole('button', { name: /Ananya Rao/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Ananya Rao' });
+  const block = sheet.getByRole('button', { name: 'Block' });
+
+  await block.click();
+  await page
+    .getByRole('dialog', { name: 'Block Ananya Rao?' })
+    .getByRole('button', { name: 'Cancel' })
+    .click();
+  await expect(block).toBeFocused();
+
+  await block.click();
+  await page.keyboard.press('Escape');
+  await expect(block).toBeFocused();
+
+  await block.click();
+  await page.getByLabel(/Reason/).fill('Left the company');
+  await page.getByRole('button', { name: 'Block account' }).click();
+  await expect(page.getByText('Ananya Rao blocked')).toBeVisible();
+  await expect(block).toBeFocused();
+
+  await sheet.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('button', { name: /Ananya Rao/ })).toBeFocused();
+});

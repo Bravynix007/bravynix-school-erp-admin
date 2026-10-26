@@ -10,6 +10,7 @@ import { KeyValueList } from '@/components/ui/key-value-list';
 import { LinkButton } from '@/components/ui/link-button';
 import { SideSheet } from '@/components/ui/side-sheet';
 import { useToast } from '@/components/ui/toast';
+import { useOneAtATime } from '@/lib/hooks/use-one-at-a-time';
 import { societyWorkspaceHref } from '@/features/societies/societies-list';
 import { formatInstant } from '@/lib/format/date';
 import { ChangeEmailDialog, ReasonDialog } from './person-dialogs';
@@ -51,6 +52,23 @@ export function PersonSheet({
   const writes = { block, unblock, email: changeEmail, unlock, reset, remove };
   const blocked = person.accountStatus === ACCOUNT_BLOCKED;
   const admin = isSuperAdmin(person);
+
+  /** One write at a time: a double click lands before the dialog shows it is busy. */
+  const oneAtATime = useOneAtATime();
+  function attempt(
+    send: (settled: { onSuccess: () => void; onError: () => void }) => void,
+    done: () => void,
+  ) {
+    oneAtATime((release) =>
+      send({
+        onSuccess: () => {
+          release();
+          done();
+        },
+        onError: release,
+      }),
+    );
+  }
 
   function finish(message: string) {
     setAction(null);
@@ -149,9 +167,9 @@ export function PersonSheet({
           write={write('block', { INVALID_STATE: 'This account is already blocked or inactive.' })}
           onClose={close}
           onSubmit={(reason) =>
-            block.mutate(
-              { reason, version: person.version },
-              { onSuccess: () => finish(`${person.displayName} blocked`) },
+            attempt(
+              (settled) => block.mutate({ reason, version: person.version }, settled),
+              () => finish(`${person.displayName} blocked`),
             )
           }
         />
@@ -166,9 +184,9 @@ export function PersonSheet({
           loading={unblock.isPending}
           onCancel={close}
           onConfirm={() =>
-            unblock.mutate(
-              { version: person.version },
-              { onSuccess: () => finish(`${person.displayName} unblocked`) },
+            attempt(
+              (settled) => unblock.mutate({ version: person.version }, settled),
+              () => finish(`${person.displayName} unblocked`),
             )
           }
         >
@@ -188,9 +206,9 @@ export function PersonSheet({
           write={write('email')}
           onClose={close}
           onSubmit={(email) =>
-            changeEmail.mutate(
-              { email, version: person.version },
-              { onSuccess: () => finish('Email changed') },
+            attempt(
+              (settled) => changeEmail.mutate({ email, version: person.version }, settled),
+              () => finish('Email changed'),
             )
           }
         />
@@ -203,7 +221,12 @@ export function PersonSheet({
           submitLabel="Unlock sign-in"
           write={write('unlock')}
           onClose={close}
-          onSubmit={(reason) => unlock.mutate({ reason }, { onSuccess: () => finish('Sign-in unlocked') })}
+          onSubmit={(reason) =>
+            attempt(
+              (settled) => unlock.mutate({ reason }, settled),
+              () => finish('Sign-in unlocked'),
+            )
+          }
         />
       ) : null}
 
@@ -216,7 +239,12 @@ export function PersonSheet({
           tone="danger"
           loading={reset.isPending}
           onCancel={close}
-          onConfirm={() => reset.mutate(undefined, { onSuccess: () => finish('Authenticator reset') })}
+          onConfirm={() =>
+            attempt(
+              (settled) => reset.mutate(undefined, settled),
+              () => finish('Authenticator reset'),
+            )
+          }
         >
           {reset.isError ? <WriteError error={reset.error} /> : null}
         </ConfirmDialog>
@@ -232,12 +260,13 @@ export function PersonSheet({
           loading={remove.isPending}
           onCancel={close}
           onConfirm={() =>
-            remove.mutate(person.id, {
-              onSuccess: () => {
+            attempt(
+              (settled) => remove.mutate(person.id, settled),
+              () => {
                 finish(`${person.displayName} removed`);
                 onClose();
               },
-            })
+            )
           }
         >
           {remove.isError ? <WriteError error={remove.error} /> : null}

@@ -78,6 +78,23 @@ function FormDialog({
   );
 }
 
+/**
+ * The API's field errors for the last write, each dropped as soon as its field is edited: the message was about
+ * the old value, and stays off until the next refusal.
+ */
+function useServerErrors(error: unknown) {
+  const [edited, setEdited] = useState<{ error: unknown; fields: ReadonlySet<string> }>({
+    error,
+    fields: new Set(),
+  });
+  const fields = edited.error === error ? edited.fields : new Set<string>();
+  const server = fieldErrorsOf(error);
+  return {
+    of: (field: string): string | undefined => (fields.has(field) ? undefined : server[field]),
+    edit: (field: string) => setEdited({ error, fields: new Set(fields).add(field) }),
+  };
+}
+
 /** PLT-09, PLT-13: a person by email, with the names the welcome email can use. Mounted only while open. */
 export function AddPersonDialog({
   title,
@@ -96,9 +113,11 @@ export function AddPersonDialog({
 }) {
   const [form, setForm] = useState<PersonForm>(emptyPerson);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const server = fieldErrorsOf(write.error);
-  const set = (key: keyof PersonForm) => (value: string) =>
+  const server = useServerErrors(write.error);
+  const set = (key: keyof PersonForm) => (value: string) => {
+    server.edit(key);
     setForm((current) => ({ ...current, [key]: value }));
+  };
 
   return (
     <FormDialog
@@ -121,7 +140,7 @@ export function AddPersonDialog({
         requiredMark
         value={form.email}
         onChange={(event) => set('email')(event.target.value)}
-        error={errors.email ?? server.email}
+        error={errors.email ?? server.of('email')}
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
@@ -129,14 +148,14 @@ export function AddPersonDialog({
           autoComplete="off"
           value={form.firstName}
           onChange={(event) => set('firstName')(event.target.value)}
-          error={errors.firstName ?? server.firstName}
+          error={errors.firstName ?? server.of('firstName')}
         />
         <TextField
           label="Last name"
           autoComplete="off"
           value={form.lastName}
           onChange={(event) => set('lastName')(event.target.value)}
-          error={errors.lastName ?? server.lastName}
+          error={errors.lastName ?? server.of('lastName')}
         />
       </div>
     </FormDialog>
@@ -165,7 +184,7 @@ export function ReasonDialog({
 }) {
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string>();
-  const server = fieldErrorsOf(write.error);
+  const server = useServerErrors(write.error);
   return (
     <FormDialog
       title={title}
@@ -190,8 +209,11 @@ export function ReasonDialog({
         requiredMark
         hint="Kept in the audit log."
         value={reason}
-        onChange={(event) => setReason(event.target.value)}
-        error={error ?? server.reason}
+        onChange={(event) => {
+          server.edit('reason');
+          setReason(event.target.value);
+        }}
+        error={error ?? server.of('reason')}
       />
     </FormDialog>
   );
@@ -211,7 +233,7 @@ export function ChangeEmailDialog({
 }) {
   const [email, setEmail] = useState(current);
   const [error, setError] = useState<string>();
-  const server = fieldErrorsOf(write.error);
+  const server = useServerErrors(write.error);
   return (
     <FormDialog
       title="Change email"
@@ -220,7 +242,9 @@ export function ChangeEmailDialog({
       write={write}
       onClose={onClose}
       onSubmit={() => {
-        const problem = emailProblem(email);
+        const problem =
+          emailProblem(email) ??
+          (email.trim().toLowerCase() === current.toLowerCase() ? 'Enter a different email.' : undefined);
         setError(problem);
         if (!problem) onSubmit(email.trim().toLowerCase());
       }}
@@ -232,8 +256,11 @@ export function ChangeEmailDialog({
         autoFocus
         requiredMark
         value={email}
-        onChange={(event) => setEmail(event.target.value)}
-        error={error ?? server.email}
+        onChange={(event) => {
+          server.edit('email');
+          setEmail(event.target.value);
+        }}
+        error={error ?? server.of('email')}
       />
     </FormDialog>
   );

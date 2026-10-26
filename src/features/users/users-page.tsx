@@ -16,6 +16,12 @@ const TABS = ['super-admins', 'owners'];
 export function UsersPage() {
   const [tab, setTab] = useUrlState('tab', 'super-admins', (value) => TABS.includes(value));
   const [personId, setPersonId] = useUrlState('person', '');
+  // One person can own several Societies, one row each, so an Owner is named by both.
+  const [societyId, setSocietyId] = useUrlState('society', '');
+  function select(person: string, society = '') {
+    setPersonId(person);
+    setSocietyId(society);
+  }
   return (
     <>
       <PageHeader title="Users" meta="Super Admins and Society Owners" />
@@ -24,7 +30,7 @@ export function UsersPage() {
         label="Kinds of user"
         value={tab}
         onChange={(value) => {
-          setPersonId('');
+          select('');
           setTab(value);
         }}
         items={[
@@ -33,10 +39,13 @@ export function UsersPage() {
         ]}
       />
       <TabPanel idPrefix={TAB_PREFIX} value="super-admins" active={tab === 'super-admins'}>
-        <SuperAdminsTab selectedId={tab === 'super-admins' ? personId : ''} onSelect={setPersonId} />
+        <SuperAdminsTab selectedId={tab === 'super-admins' ? personId : ''} onSelect={select} />
       </TabPanel>
       <TabPanel idPrefix={TAB_PREFIX} value="owners" active={tab === 'owners'}>
-        <SocietyOwnersTab selectedId={tab === 'owners' ? personId : ''} onSelect={setPersonId} />
+        <SocietyOwnersTab
+          selection={tab === 'owners' && personId && societyId ? { personId, societyId } : null}
+          onSelect={select}
+        />
       </TabPanel>
     </>
   );

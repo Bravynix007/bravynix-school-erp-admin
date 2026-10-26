@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
@@ -179,6 +179,51 @@ describe('Super Admins', () => {
     ).toBeInTheDocument();
   });
 
+  it('does not send an email that is the same as the current one', async () => {
+    renderScreen(<UsersPage />);
+    const sheet = await openSuperAdmin('Ananya Rao');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Change email' }));
+    const dialog = screen.getByRole('dialog', { name: 'Change email' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Change email' }));
+    expect(await within(dialog).findByText('Enter a different email.')).toBeInTheDocument();
+    expect(api.changeEmail).not.toHaveBeenCalled();
+  });
+
+  it('drops the API’s message about a field as soon as the field is edited', async () => {
+    api.changeEmail.mockRejectedValue(
+      new ApiError(409, 'DUPLICATE', 'x', 'req-6', [
+        { field: 'email', code: 'DUPLICATE', message: 'Already used here' },
+      ]),
+    );
+    renderScreen(<UsersPage />);
+    const sheet = await openSuperAdmin('Ananya Rao');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Change email' }));
+    const dialog = screen.getByRole('dialog', { name: 'Change email' });
+    const field = within(dialog).getByLabelText(/New email/);
+    await userEvent.clear(field);
+    await userEvent.type(field, 'taken@bravynix.in');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Change email' }));
+    expect(await within(dialog).findByText('Already used here')).toBeInTheDocument();
+
+    await userEvent.type(field, 'x');
+    expect(within(dialog).queryByText('Already used here')).not.toBeInTheDocument();
+  });
+
+  it('sends a block once when the button is clicked twice before the dialog shows it is busy', async () => {
+    api.block.mockImplementation(() => new Promise(() => {}));
+    renderScreen(<UsersPage />);
+    const sheet = await openSuperAdmin('Ananya Rao');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Block' }));
+    const dialog = screen.getByRole('dialog', { name: 'Block Ananya Rao?' });
+    await userEvent.type(within(dialog).getByLabelText(/Reason/), 'Left');
+    const submit = within(dialog).getByRole('button', { name: 'Block account' });
+    act(() => {
+      submit.click();
+      submit.click();
+    });
+    await waitFor(() => expect(api.block).toHaveBeenCalledTimes(1));
+  });
+
   it('unlocks sign-in with a reason, and says when there is nothing to unlock', async () => {
     api.unlock.mockRejectedValue(new ApiError(409, 'NOT_LOCKED', 'x', 'req-6'));
     renderScreen(<UsersPage />);
@@ -266,7 +311,7 @@ describe('Society Owners', () => {
     await userEvent.click(await screen.findByRole('tab', { name: 'Society Owners' }));
     expect(window.location.search).toBe('?tab=owners');
     await userEvent.click(await screen.findByRole('button', { name: /Asha Rao/ }));
-    expect(window.location.search).toBe('?tab=owners&person=o1');
+    expect(window.location.search).toBe('?tab=owners&person=o1&society=s1');
     await userEvent.click(
       within(screen.getByRole('dialog', { name: 'Asha Rao' })).getByRole('button', { name: 'Close' }),
     );
@@ -275,9 +320,33 @@ describe('Society Owners', () => {
     expect(window.location.search).toBe('');
     first.unmount();
 
-    window.history.replaceState(null, '', '/users/?tab=owners&person=o1');
+    window.history.replaceState(null, '', '/users/?tab=owners&person=o1&society=s1');
     renderScreen(<UsersPage />);
     expect(await screen.findByRole('dialog', { name: 'Asha Rao' })).toBeInTheDocument();
+  });
+
+  it('tells apart one person who owns two Societies: a row, a URL and a sheet for each', async () => {
+    api.owners.mockResolvedValue(
+      ownerPage([
+        owner(),
+        owner({ seatNo: 2, society: { id: 's2', code: 'NSS', name: 'Navodaya Society' } }),
+      ]),
+    );
+    const first = renderScreen(<UsersPage />);
+    await userEvent.click(await screen.findByRole('tab', { name: 'Society Owners' }));
+    const rows = await screen.findAllByRole('button', { name: /Asha Rao/ });
+    expect(rows).toHaveLength(2);
+
+    await userEvent.click(rows[1]!);
+    expect(window.location.search).toBe('?tab=owners&person=o1&society=s2');
+    const sheet = await screen.findByRole('dialog', { name: 'Asha Rao' });
+    expect(within(sheet).getByRole('link', { name: 'Navodaya Society' })).toBeInTheDocument();
+    expect(within(sheet).getByText('Seat 2')).toBeInTheDocument();
+    first.unmount();
+
+    window.history.replaceState(null, '', '/users/?tab=owners&person=o1&society=s2');
+    renderScreen(<UsersPage />);
+    expect(await screen.findByRole('link', { name: 'Navodaya Society' })).toBeInTheDocument();
   });
 
   it('opens nothing for a person who is not in the list, such as a stale link', async () => {

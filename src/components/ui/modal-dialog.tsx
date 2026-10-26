@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useRef, type DialogHTMLAttributes, type ReactNode, type SyntheticEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type DialogHTMLAttributes,
+  type ReactNode,
+  type SyntheticEvent,
+} from 'react';
 import { IconWifiOff } from '@tabler/icons-react';
 import { cn } from '@/lib/cn';
 import { useOnline } from './offline-band';
@@ -50,6 +57,20 @@ export function ModalDialog({
   const pointerDownOnBackdrop = useRef(false);
   useEffect(() => {
     openRef.current = open;
+  }, [open]);
+
+  // Where focus goes back to. A dialog its owner mounts only while open is removed with `open` still set, and the
+  // browser returns focus only from `close()`, so this closes it first (DESIGN.md 15).
+  const trigger = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = ref.current;
+    return () => {
+      openRef.current = false;
+      if (dialog?.open) dialog.close();
+      if (trigger.current?.isConnected) trigger.current.focus();
+    };
   }, [open]);
 
   useEffect(() => {

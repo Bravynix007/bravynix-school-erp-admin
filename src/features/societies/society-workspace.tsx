@@ -2,7 +2,7 @@
 
 import type { Route } from 'next';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AccountStatusChip } from '@/components/shell/account-status-chip';
 import { LoadFailed } from '@/components/shell/load-failed';
 import { PageHeader } from '@/components/shell/page-header';
@@ -80,6 +80,8 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
   const [addingOwner, setAddingOwner] = useState(false);
   const [removing, setRemoving] = useState<Owner | null>(null);
   const oneAtATime = useOneAtATime();
+  // Where focus lands when a removed Owner's own button is gone (DESIGN.md 15).
+  const ownersRef = useRef<HTMLDivElement>(null);
 
   const deactivated = society.status === 0;
 
@@ -179,7 +181,13 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
         </TabPanel>
 
         <TabPanel idPrefix={TAB_PREFIX} value="owners" active={tab === 'owners'}>
-          <div className="flex flex-col gap-4 pt-4">
+          <div
+            ref={ownersRef}
+            role="group"
+            aria-label="Owners"
+            tabIndex={-1}
+            className="flex flex-col gap-4 pt-4"
+          >
             <SeatMeter
               max={MAX_OWNERS}
               noun="Owners"
@@ -262,12 +270,16 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
             setAddingOwner(false);
           }}
           onSubmit={(body) =>
-            addOwner.mutate(body, {
-              onSuccess: () => {
-                setAddingOwner(false);
-                toast.success('Owner added');
-              },
-            })
+            oneAtATime((release) =>
+              addOwner.mutate(body, {
+                onSuccess: () => {
+                  release();
+                  setAddingOwner(false);
+                  toast.success('Owner added');
+                },
+                onError: release,
+              }),
+            )
           }
         />
       ) : null}
@@ -285,12 +297,17 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
         }}
         onConfirm={() => {
           if (removing === null) return;
-          removeOwner.mutate(removing.id, {
-            onSuccess: () => {
-              toast.success(`${removing.displayName} removed`);
-              setRemoving(null);
-            },
-          });
+          oneAtATime((release) =>
+            removeOwner.mutate(removing.id, {
+              onSuccess: () => {
+                release();
+                toast.success(`${removing.displayName} removed`);
+                setRemoving(null);
+                window.setTimeout(() => ownersRef.current?.focus(), 0);
+              },
+              onError: release,
+            }),
+          );
         }}
       >
         {removeOwner.isError ? <WriteError error={removeOwner.error} /> : null}

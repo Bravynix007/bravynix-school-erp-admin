@@ -15,6 +15,9 @@ import { useOwnerList } from './use-users';
 
 const PAGE_SIZE = 20;
 
+/** PLT-11 has a row per seat, and `id` is the person's: an Owner of two Societies is two rows. */
+const ownerRowId = (row: SocietyOwner) => `${row.id}:${row.society.id}`;
+
 const columns: Column<SocietyOwner>[] = [
   {
     key: 'name',
@@ -51,11 +54,11 @@ const columns: Column<SocietyOwner>[] = [
 
 /** PLT-11: every Society Owner, searchable by name or email. Seats are added and removed from the Society. */
 export function SocietyOwnersTab({
-  selectedId,
+  selection,
   onSelect,
 }: {
-  selectedId: string;
-  onSelect: (id: string) => void;
+  selection: { personId: string; societyId: string } | null;
+  onSelect: (personId: string, societyId?: string) => void;
 }) {
   const controls = useListControls('name');
   const list = useOwnerList({
@@ -65,7 +68,9 @@ export function SocietyOwnersTab({
     q: controls.q,
   });
 
-  const selected = list.data?.items.find((row) => row.id === selectedId);
+  const selected = list.data?.items.find(
+    (row) => row.id === selection?.personId && row.society.id === selection.societyId,
+  );
   const total = list.data?.meta.totalItems;
   const filtered = controls.q !== '';
 
@@ -90,13 +95,13 @@ export function SocietyOwnersTab({
           caption="Society Owners"
           columns={columns}
           rows={list.data?.items ?? []}
-          getRowId={(row) => row.id}
+          getRowId={ownerRowId}
           loading={list.isPending}
           refreshing={list.isPlaceholderData}
           sort={controls.sort}
           onSort={controls.toggleSort}
-          selectedId={selectedId || undefined}
-          onRowOpen={(row) => onSelect(row.id)}
+          selectedId={selected ? ownerRowId(selected) : undefined}
+          onRowOpen={(row) => onSelect(row.id, row.society.id)}
           empty={
             filtered ? (
               <EmptyState title="No Owners match" description="Clear the search to see all of them." />
