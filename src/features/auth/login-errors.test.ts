@@ -72,6 +72,14 @@ describe('login errors', () => {
     expect(isLockedOut(new Error('x'))).toBe(false);
   });
 
+  it('restarts after the last wrong authenticator code a sign-in allows', () => {
+    expect(isRestartError(error('MFA_INVALID', { attemptsLeft: 0 }))).toBe(true);
+    expect(loginErrorMessage(error('MFA_INVALID', { attemptsLeft: 0 }))).toBe(
+      'Too many incorrect authenticator codes. Start again.',
+    );
+    expect(isRestartError(error('MFA_INVALID', { attemptsLeft: 1 }))).toBe(false);
+  });
+
   it('explains the authenticator states that need a fresh start', () => {
     for (const code of ['MFA_ALREADY_ENROLLED', 'MFA_NOT_ENROLLED']) {
       expect(loginErrorMessage(error(code))).not.toBe('server text');
