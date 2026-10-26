@@ -1,5 +1,6 @@
 import { api, type ApiClient } from '@/lib/api/client';
 import { getPage, type Page } from '@/lib/api/lists';
+import type { NewPerson } from '@/features/users/types';
 import type { CreateSocietyBody, Society, SocietyDetail, SocietySummary, UpdateSocietyBody } from './types';
 
 export interface SocietyListQuery {
@@ -19,7 +20,7 @@ export function statusQuery(status: string): { status?: number } {
   return {};
 }
 
-/** The Society calls PLT-02 to PLT-06 (API design 10.4b). */
+/** The Society calls PLT-02 to PLT-06 (API design 10.4b) and the Owner seats PLT-09, PLT-10. */
 export function createSocietiesApi(client: ApiClient = api) {
   const base = 'platform/societies';
   return {
@@ -41,6 +42,14 @@ export function createSocietiesApi(client: ApiClient = api) {
     update: (id: string, body: UpdateSocietyBody) =>
       client.data<Society>(`${base}/${id}`, { method: 'PATCH', body }),
     deactivate: (id: string) => client.data<{ id: string; status: 0 }>(`${base}/${id}`, { method: 'DELETE' }),
+    /** PLT-09 and PLT-10 (API design 10.4d). */
+    addOwner: (id: string, body: NewPerson) =>
+      client.data<{ id: string; email: string; displayName: string; societyId: string; seatNo: number }>(
+        `${base}/${id}/owners`,
+        { method: 'POST', body },
+      ),
+    removeOwner: (id: string, userId: string) =>
+      client.data<{ id: string; status: 0 }>(`${base}/${id}/owners/${userId}`, { method: 'DELETE' }),
   };
 }
 

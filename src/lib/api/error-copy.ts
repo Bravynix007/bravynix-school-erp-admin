@@ -24,6 +24,9 @@ const COPY: Record<string, string> = {
   CANNOT_ACT_ON_SELF: "You can't do this to your own account.",
   EMAIL_IN_USE: 'This email already belongs to another person.',
   ACCOUNT_BLOCKED: 'This account is blocked.',
+  MFA_NOT_ENROLLED: 'This person has not set up an authenticator, so there is nothing to reset.',
+  AUTHENTICATOR_LOCKED: 'Their authenticator is locked after wrong codes. Unlock their sign-in first.',
+  NOT_LOCKED: 'This person is not locked out, so there is nothing to unlock.',
 };
 
 export function apiErrorMessage(error: unknown, overrides: Record<string, string> = {}): string {

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { signInOperator } from './operator';
+import { sharedOperator } from './operator';
 
 /** The Society screens against the real API: onboard, find, read, edit and deactivate. */
 test.describe.serial('Societies against the real API', () => {
@@ -13,11 +13,7 @@ test.describe.serial('Societies against the real API', () => {
   test.beforeAll(async ({ browser }) => {
     // Signing in as sa1 may first wait out the API's one-minute resend gap after an earlier spec's sign-in.
     test.setTimeout(150_000);
-    ({ page } = await signInOperator(browser, 'sa1@two-worlds.test'));
-  });
-
-  test.afterAll(async () => {
-    await page.context().close();
+    ({ page } = await sharedOperator(browser, 'sa1@two-worlds.test'));
   });
 
   test('onboarding creates the Society with its Owner and opens it', async () => {

@@ -23,12 +23,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StampBlock } from '@/components/ui/stamp-block';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
+import { AddPersonDialog } from '@/features/users/person-dialogs';
 import { formatSchoolDate } from '@/lib/format/date';
 import { MAX_OWNERS } from './owner-rows';
 import type { SocietyDetail } from './types';
-import { useDeactivateSociety, useSociety } from './use-societies';
+import { useAddOwner, useDeactivateSociety, useRemoveOwner, useSociety } from './use-societies';
 
 type Institution = SocietyDetail['institutions'][number];
+type Owner = SocietyDetail['owners'][number];
 
 const TAB_PREFIX = 'society';
 
@@ -69,6 +71,10 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
   const [tab, setTab] = useState('overview');
   const [deactivating, setDeactivating] = useState(false);
   const deactivate = useDeactivateSociety(society.id);
+  const addOwner = useAddOwner(society.id);
+  const removeOwner = useRemoveOwner(society.id);
+  const [addingOwner, setAddingOwner] = useState(false);
+  const [removing, setRemoving] = useState<Owner | null>(null);
 
   const deactivated = society.status === 0;
 
@@ -173,11 +179,17 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
               max={MAX_OWNERS}
               noun="Owners"
               seats={society.owners.map((owner) => ({ id: owner.id, name: owner.displayName }))}
+              onAdd={deactivated ? undefined : () => setAddingOwner(true)}
+              addLabel="Add an Owner"
             />
             {society.owners.length === 0 ? (
               <EmptyState
                 title="No Owners"
-                description="Add an Owner from Users so someone can sign in to this Society."
+                description={
+                  deactivated
+                    ? 'This Society has no Owners.'
+                    : 'Add an Owner so someone can sign in to this Society.'
+                }
               />
             ) : (
               <ul className="divide-y divide-line-subtle rounded-lg border border-line bg-surface">
@@ -187,7 +199,19 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
                       <p className="font-medium">{owner.displayName}</p>
                       <p className="text-caption text-ink-secondary">{owner.email}</p>
                     </div>
-                    <AccountStatusChip status={owner.accountStatus} />
+                    <div className="flex items-center gap-3">
+                      <AccountStatusChip status={owner.accountStatus} />
+                      {deactivated ? null : (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          aria-label={`Remove ${owner.displayName}`}
+                          onClick={() => setRemoving(owner)}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -212,6 +236,60 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
           </div>
         </TabPanel>
       </div>
+
+      {addingOwner ? (
+        <AddPersonDialog
+          title="Add Owner"
+          description={`They get an emailed code to sign in to ${society.name}. A Society has at most ${MAX_OWNERS} Owners.`}
+          submitLabel="Add Owner"
+          write={{
+            pending: addOwner.isPending,
+            error: addOwner.error,
+            overrides: {
+              SEAT_LIMIT_REACHED: `This Society already has ${MAX_OWNERS} Owners. Remove one first.`,
+              DUPLICATE: 'This person is already an Owner of this Society.',
+              ACCOUNT_BLOCKED: 'This person’s account is blocked. Unblock it first.',
+              INVALID_STATE: 'This Society is deactivated, or the person’s account is inactive.',
+            },
+          }}
+          onClose={() => {
+            addOwner.reset();
+            setAddingOwner(false);
+          }}
+          onSubmit={(body) =>
+            addOwner.mutate(body, {
+              onSuccess: () => {
+                setAddingOwner(false);
+                toast.success('Owner added');
+              },
+            })
+          }
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={removing !== null}
+        title={`Remove ${removing?.displayName ?? 'this Owner'} as Owner?`}
+        consequence="Their sessions as Owner of this Society end. Their account is not deleted, and they keep any other role."
+        confirmLabel="Remove Owner"
+        tone="danger"
+        loading={removeOwner.isPending}
+        onCancel={() => {
+          removeOwner.reset();
+          setRemoving(null);
+        }}
+        onConfirm={() => {
+          if (removing === null) return;
+          removeOwner.mutate(removing.id, {
+            onSuccess: () => {
+              toast.success(`${removing.displayName} removed`);
+              setRemoving(null);
+            },
+          });
+        }}
+      >
+        {removeOwner.isError ? <WriteError error={removeOwner.error} /> : null}
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={deactivating}

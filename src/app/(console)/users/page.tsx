@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { ComingSoon } from '@/components/shell/coming-soon';
+import { UsersPage } from '@/features/users/users-page';
 
 export const metadata: Metadata = { title: 'Users' };
 
-export default function UsersPage() {
-  return <ComingSoon title="Users" phase="phase 1 (Super Admins) and phase 4 (all users)" />;
+export default function Page() {
+  return <UsersPage />;
 }
