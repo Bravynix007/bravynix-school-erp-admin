@@ -53,11 +53,13 @@ export function CodeStep({
   const bandError = error && !codeError ? loginErrorMessage(error) : null;
 
   // A locked email cannot be sent a new code, so there is nothing to type or resend: only a way back.
-  if (isLockedOut(verify.error) || isLockedOut(resend.error)) {
+  // Either call may carry the lock; focus moves to the way back because the code boxes are gone.
+  const locked = [verify.error, resend.error].find(isLockedOut);
+  if (locked) {
     return (
       <div className="flex flex-col gap-5">
-        <InlineAlert tone="error">{bandError}</InlineAlert>
-        <Button className="w-full" onClick={onChangeEmail}>
+        <InlineAlert tone="error">{loginErrorMessage(locked)}</InlineAlert>
+        <Button className="w-full" onClick={onChangeEmail} autoFocus>
           Start again
         </Button>
       </div>
