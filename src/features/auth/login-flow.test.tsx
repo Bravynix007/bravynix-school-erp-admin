@@ -83,6 +83,18 @@ describe('LoginFlow', () => {
     expect(await screen.findByText('Incorrect code. 3 attempts left.')).toBeInTheDocument();
   });
 
+  it('after the fifth wrong code says how long the email is locked and offers only a fresh start', async () => {
+    await reachCodeStep();
+    authApi.verifyOtp.mockRejectedValue(new ApiError(401, 'OTP_ATTEMPTS_EXCEEDED', 'x', 'r', [], {}, 1800));
+    await typeCode('111111');
+    expect(await screen.findByText('Too many incorrect codes. Try again in 30 minutes.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Resend code' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Resend code in/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Start again' }));
+    expect(await screen.findByLabelText('Email')).toBeInTheDocument();
+  });
+
   it('enrols the authenticator once on first login, then signs in', async () => {
     await reachCodeStep();
     authApi.verifyOtp.mockResolvedValue({ mfaRequired: true, mfaToken: 'mfa-1', mfaEnrolled: false });

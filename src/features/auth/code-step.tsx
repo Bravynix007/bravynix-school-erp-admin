@@ -8,7 +8,7 @@ import { OtpInput } from '@/components/ui/otp-input';
 import { ApiError } from '@/lib/api/api-error';
 import { authApi, isMfaChallenge, type LoginTokens, type MfaChallenge } from '@/lib/auth/auth-api';
 import { formatCountdown, useCountdown } from '@/lib/hooks/use-countdown';
-import { isRestartError, loginErrorMessage, maskEmail } from './login-errors';
+import { isLockedOut, isRestartError, loginErrorMessage, maskEmail } from './login-errors';
 
 /** Screen 2: six digit boxes, Verify, resend timer, "Use a different email". */
 export function CodeStep({
@@ -51,6 +51,18 @@ export function CodeStep({
   const codeError =
     verify.error && !isRestartError(verify.error) ? loginErrorMessage(verify.error) : undefined;
   const bandError = error && !codeError ? loginErrorMessage(error) : null;
+
+  // A locked email cannot be sent a new code, so there is nothing to type or resend: only a way back.
+  if (isLockedOut(verify.error) || isLockedOut(resend.error)) {
+    return (
+      <div className="flex flex-col gap-5">
+        <InlineAlert tone="error">{bandError}</InlineAlert>
+        <Button className="w-full" onClick={onChangeEmail}>
+          Start again
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <form
