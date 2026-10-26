@@ -22,7 +22,6 @@ const PAGE_SIZE = 20;
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
-  { value: 'paused', label: 'Paused' },
   { value: 'inactive', label: 'Inactive' },
 ];
 

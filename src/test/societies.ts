@@ -14,7 +14,6 @@ export const summary = (changes: Partial<SocietySummary> = {}): SocietySummary =
   code: 'SVES',
   name: 'Sri Vidya Educational Society',
   status: 1,
-  paused: false,
   institutionCount: 2,
   ...stamps,
   ...changes,
@@ -31,18 +30,12 @@ export const society = (changes: Partial<SocietyDetail> = {}): SocietyDetail => 
   foundedDate: '1998-06-01',
   address: { line1: '12 MG Road', line2: null, pincode: '560001' },
   status: 1,
-  accessPause: null,
   institutionCount: 1,
   version: 3,
-  institutions: [{ id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 1, paused: false }],
+  institutions: [{ id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 1 }],
   owners: [{ id: 'o1', displayName: 'Asha Rao', email: 'asha@example.org', accountStatus: 1 }],
   ...stamps,
   ...changes,
 });
-
-export const pausedSociety = (): SocietyDetail =>
-  society({
-    accessPause: { pausedAt: '2026-10-05T04:30:00.000Z', pausedBy: actor, reason: 'Non-payment' },
-  });
 
 export type { Society };

@@ -3,11 +3,9 @@
 import type { Route } from 'next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { IconPlus } from '@tabler/icons-react';
 import { AccountStatusChip } from '@/components/shell/account-status-chip';
 import { LoadFailed } from '@/components/shell/load-failed';
 import { PageHeader } from '@/components/shell/page-header';
-import { PauseDialog } from '@/components/shell/pause-dialog';
 import { RecordNotFound } from '@/components/shell/status-panels';
 import { TenantStatusChip } from '@/components/shell/tenant-status-chip';
 import { WriteError } from '@/components/shell/write-error';
@@ -25,17 +23,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StampBlock } from '@/components/ui/stamp-block';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
-import { formatInstant, formatSchoolDate } from '@/lib/format/date';
+import { formatSchoolDate } from '@/lib/format/date';
 import { MAX_OWNERS } from './owner-rows';
 import type { SocietyDetail } from './types';
-import { useDeactivateSociety, usePauseSociety, useResumeSociety, useSociety } from './use-societies';
+import { useDeactivateSociety, useSociety } from './use-societies';
 
 type Institution = SocietyDetail['institutions'][number];
 
 const TAB_PREFIX = 'society';
 
 export const societyEditHref = (id: string) => `/societies/edit?id=${id}` as Route;
-const addInstitutionHref = (id: string) => `/institutions/new?societyId=${id}` as Route;
 
 /** PLT-04: one Society with its Owners and Institutions (STITCH_PROMPT 2.3). The ID is a query parameter, because the console is a static export. */
 export function SocietyWorkspace() {
@@ -70,20 +67,10 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
   const router = useRouter();
   const toast = useToast();
   const [tab, setTab] = useState('overview');
-  const [dialog, setDialog] = useState<'pause' | 'resume' | 'deactivate' | null>(null);
-  const pause = usePauseSociety(society.id);
-  const resume = useResumeSociety(society.id);
+  const [deactivating, setDeactivating] = useState(false);
   const deactivate = useDeactivateSociety(society.id);
 
   const deactivated = society.status === 0;
-  const paused = society.accessPause !== null;
-  const record = { status: society.status, paused };
-
-  const close = () => setDialog(null);
-  const done = (message: string) => {
-    close();
-    toast.success(message);
-  };
 
   const institutionColumns: Column<Institution>[] = [
     {
@@ -107,7 +94,7 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
         breadcrumb={
           <Breadcrumbs items={[{ label: 'Societies', href: '/societies' }, { label: society.name }]} />
         }
-        status={<TenantStatusChip record={record} />}
+        status={<TenantStatusChip record={society} />}
         meta={
           <>
             <Mono>{society.code}</Mono>
@@ -117,27 +104,12 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
         actions={
           deactivated ? undefined : (
             <>
-              {paused ? (
-                <Button variant="secondary" onClick={() => setDialog('resume')}>
-                  Resume access
-                </Button>
-              ) : (
-                <Button variant="secondary" onClick={() => setDialog('pause')}>
-                  Pause access
-                </Button>
-              )}
               <LinkButton href={societyEditHref(society.id)} variant="secondary">
                 Edit
               </LinkButton>
-              <Button variant="secondary" onClick={() => setDialog('deactivate')}>
+              <Button variant="secondary" onClick={() => setDeactivating(true)}>
                 Deactivate
               </Button>
-              <LinkButton
-                href={addInstitutionHref(society.id)}
-                icon={<IconPlus size={18} aria-hidden="true" />}
-              >
-                Add Institution
-              </LinkButton>
             </>
           )
         }
@@ -149,13 +121,6 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
             This Society is deactivated. Its people can no longer sign in to it, and nothing was deleted.
           </InlineAlert>
         ) : null}
-        {paused && !deactivated ? (
-          <InlineAlert tone="warning">
-            Access paused since {formatInstant(society.accessPause!.pausedAt)} by{' '}
-            {society.accessPause!.pausedBy.displayName}: {society.accessPause!.reason}
-          </InlineAlert>
-        ) : null}
-
         <Tabs
           idPrefix={TAB_PREFIX}
           label="Society sections"
@@ -240,12 +205,7 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
               empty={
                 <EmptyState
                   title="No Institutions yet"
-                  description="Add the first Institution of this Society."
-                  action={
-                    deactivated ? undefined : (
-                      <LinkButton href={addInstitutionHref(society.id)}>Add Institution</LinkButton>
-                    )
-                  }
+                  description="The Owners of this Society add its Institutions."
                 />
               }
             />
@@ -253,52 +213,8 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
         </TabPanel>
       </div>
 
-      <PauseDialog
-        open={dialog === 'pause'}
-        title={`Pause access for ${society.name}?`}
-        consequence={`Users of all ${society.institutions.length} Institutions will see “Access paused” after sign-in. No data is changed.`}
-        pending={pause.isPending}
-        error={pause.error}
-        onClose={() => {
-          pause.reset();
-          close();
-        }}
-        onReload={() => {
-          pause.reset();
-          reload();
-        }}
-        onSubmit={(reason) =>
-          pause.mutate({ reason, version: society.version }, { onSuccess: () => done('Access paused') })
-        }
-      />
-
       <ConfirmDialog
-        open={dialog === 'resume'}
-        title={`Resume access for ${society.name}?`}
-        consequence="Its users can sign in again straight away."
-        confirmLabel="Resume access"
-        loading={resume.isPending}
-        onCancel={() => {
-          resume.reset();
-          close();
-        }}
-        onConfirm={() =>
-          resume.mutate({ version: society.version }, { onSuccess: () => done('Access resumed') })
-        }
-      >
-        {resume.isError ? (
-          <WriteError
-            error={resume.error}
-            onReload={() => {
-              resume.reset();
-              reload();
-            }}
-          />
-        ) : null}
-      </ConfirmDialog>
-
-      <ConfirmDialog
-        open={dialog === 'deactivate'}
+        open={deactivating}
         title={`Deactivate ${society.name}?`}
         consequence="Its Owners, Institution Admins and staff are signed out and can no longer sign in to it. Nothing is deleted, but it cannot be reactivated from the console yet."
         confirmLabel="Deactivate Society"
@@ -306,12 +222,12 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
         loading={deactivate.isPending}
         onCancel={() => {
           deactivate.reset();
-          close();
+          setDeactivating(false);
         }}
         onConfirm={() =>
           deactivate.mutate(undefined, {
             onSuccess: () => {
-              close();
+              setDeactivating(false);
               toast.success(`${society.name} deactivated`);
               router.replace('/societies');
             },

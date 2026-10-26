@@ -46,9 +46,3 @@ export const useUpdateSociety = (id: string) =>
   useSocietyWrite((body: UpdateSocietyBody) => societiesApi.update(id, body));
 
 export const useDeactivateSociety = (id: string) => useSocietyWrite(() => societiesApi.deactivate(id));
-
-export const usePauseSociety = (id: string) =>
-  useSocietyWrite((body: { reason: string; version: number }) => societiesApi.pause(id, body));
-
-export const useResumeSociety = (id: string) =>
-  useSocietyWrite((body: { version: number }) => societiesApi.resume(id, body));

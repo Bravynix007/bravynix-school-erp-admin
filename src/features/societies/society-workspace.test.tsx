@@ -4,7 +4,7 @@ import type * as SocietiesApiModule from './societies-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
 import { renderScreen } from '@/test/render';
-import { pausedSociety, society } from '@/test/societies';
+import { society } from '@/test/societies';
 import { SocietyWorkspace } from './society-workspace';
 
 const replace = vi.fn();
@@ -14,12 +14,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: () => id }),
 }));
 
-const api = vi.hoisted(() => ({
-  get: vi.fn(),
-  pause: vi.fn(),
-  resume: vi.fn(),
-  deactivate: vi.fn(),
-}));
+const api = vi.hoisted(() => ({ get: vi.fn(), deactivate: vi.fn() }));
 vi.mock('./societies-api', async (original) => ({
   ...(await original<typeof SocietiesApiModule>()),
   societiesApi: api,
@@ -42,12 +37,9 @@ describe('SocietyWorkspace', () => {
     expect(screen.getByText('+91 9876543210')).toBeInTheDocument();
     expect(screen.getByText(/Founded 01-06-1998/)).toBeInTheDocument();
     expect(screen.getByText(/Added by A. Rao/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Pause access' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Deactivate' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Add Institution' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/societies/edit?id=s1');
-    expect(screen.getByRole('link', { name: 'Add Institution' })).toHaveAttribute(
-      'href',
-      '/institutions/new?societyId=s1',
-    );
   });
 
   it('lists the Owners with a seat count and the Institutions on their own tabs', async () => {
@@ -61,45 +53,15 @@ describe('SocietyWorkspace', () => {
     expect(screen.getByText('Sri Vidya High School')).toBeInTheDocument();
   });
 
-  it('pauses with a required reason and the version it read', async () => {
+  it('shows the error inside the confirmation when the API refuses, and keeps the Society', async () => {
     api.get.mockResolvedValue(society());
-    api.pause.mockResolvedValue(pausedSociety());
+    api.deactivate.mockRejectedValue(new ApiError(409, 'INVALID_STATE', 'x', 'req-3'));
     renderScreen(<SocietyWorkspace />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Pause access' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Deactivate' }));
     const dialog = screen.getByRole('dialog');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Pause access' }));
-    expect(within(dialog).getByText('Give the reason for the pause.')).toBeInTheDocument();
-    expect(api.pause).not.toHaveBeenCalled();
-
-    await userEvent.type(within(dialog).getByLabelText(/Reason/), '  Non-payment since August ');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Pause access' }));
-    await waitFor(() =>
-      expect(api.pause).toHaveBeenCalledWith('s1', { reason: 'Non-payment since August', version: 3 }),
-    );
-  });
-
-  it('shows who paused it and why, and offers Resume instead of Pause', async () => {
-    api.get.mockResolvedValue(pausedSociety());
-    api.resume.mockResolvedValue(society({ version: 5 }));
-    renderScreen(<SocietyWorkspace />);
-    expect(await screen.findByText(/Access paused since/)).toHaveTextContent('Non-payment');
-    expect(screen.queryByRole('button', { name: 'Pause access' })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Resume access' }));
-    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Resume access' }));
-    await waitFor(() => expect(api.resume).toHaveBeenCalledWith('s1', { version: 3 }));
-  });
-
-  it('offers Reload when someone else changed the Society first', async () => {
-    api.get.mockResolvedValue(society());
-    api.pause.mockRejectedValue(new ApiError(409, 'VERSION_CONFLICT', 'x', 'r', [], { currentVersion: 4 }));
-    renderScreen(<SocietyWorkspace />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Pause access' }));
-    const dialog = screen.getByRole('dialog');
-    await userEvent.type(within(dialog).getByLabelText(/Reason/), 'Late fees');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Pause access' }));
-    expect(await within(dialog).findByText(/Someone changed this record/)).toBeInTheDocument();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Reload' }));
-    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Deactivate Society' }));
+    expect(await within(dialog).findByText('INVALID_STATE')).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it('deactivates after a confirmation that says what happens, then returns to the list', async () => {
@@ -118,7 +80,7 @@ describe('SocietyWorkspace', () => {
     api.get.mockResolvedValue(society({ status: 0 }));
     renderScreen(<SocietyWorkspace />);
     expect(await screen.findByText(/This Society is deactivated/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Pause access' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Deactivate' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument();
   });
 

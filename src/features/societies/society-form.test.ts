@@ -21,7 +21,6 @@ const society: Society = {
   foundedDate: '1998-06-01',
   address: { line1: '12 MG Road', line2: null, pincode: '560001' },
   status: 1,
-  accessPause: null,
   institutionCount: 2,
   version: 3,
   createdBy: actor,

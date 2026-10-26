@@ -1,4 +1,4 @@
-import type { Actor, Stamped } from '@/lib/api/envelope';
+import type { Stamped } from '@/lib/api/envelope';
 
 export interface Phone {
   countryCode: string;
@@ -17,14 +17,7 @@ export interface SocietySummary extends Stamped {
   name: string;
   /** 1 active, 0 deactivated. */
   status: number;
-  paused: boolean;
   institutionCount: number;
-}
-
-export interface AccessPause {
-  pausedAt: string;
-  pausedBy: Actor;
-  reason: string;
 }
 
 /** The Society resource of PLT-03, PLT-04, PLT-05, PLT-07 and PLT-08. */
@@ -38,13 +31,12 @@ export interface Society extends Stamped {
   foundedDate: string | null;
   address: Address;
   status: number;
-  accessPause: AccessPause | null;
   institutionCount: number;
   version: number;
 }
 
 export interface SocietyDetail extends Society {
-  institutions: { id: string; code: string; name: string; status: number; paused: boolean }[];
+  institutions: { id: string; code: string; name: string; status: number }[];
   owners: { id: string; displayName: string; email: string; accountStatus: number }[];
 }
 

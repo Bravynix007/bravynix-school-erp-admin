@@ -8,19 +8,18 @@ export interface SocietyListQuery {
   sort: string;
   /** Sent only from 2 characters: the API refuses shorter searches (API design 10.4b). */
   q: string;
-  /** `active`, `paused` or `inactive`; empty for all. */
+  /** `active` or `inactive`; empty for all. */
   status: string;
 }
 
-/** The status filter as the API's `status` and `paused` parameters. */
-export function statusQuery(status: string): { status?: number; paused?: boolean } {
-  if (status === 'active') return { status: 1, paused: false };
-  if (status === 'paused') return { status: 1, paused: true };
+/** The status filter as the API's `status` parameter. */
+export function statusQuery(status: string): { status?: number } {
+  if (status === 'active') return { status: 1 };
   if (status === 'inactive') return { status: 0 };
   return {};
 }
 
-/** The Society calls PLT-02 to PLT-08 (API design 10.4b). */
+/** The Society calls PLT-02 to PLT-06 (API design 10.4b). */
 export function createSocietiesApi(client: ApiClient = api) {
   const base = 'platform/societies';
   return {
@@ -42,10 +41,6 @@ export function createSocietiesApi(client: ApiClient = api) {
     update: (id: string, body: UpdateSocietyBody) =>
       client.data<Society>(`${base}/${id}`, { method: 'PATCH', body }),
     deactivate: (id: string) => client.data<{ id: string; status: 0 }>(`${base}/${id}`, { method: 'DELETE' }),
-    pause: (id: string, body: { reason: string; version: number }) =>
-      client.data<Society>(`${base}/${id}/pause`, { method: 'POST', body }),
-    resume: (id: string, body: { version: number }) =>
-      client.data<Society>(`${base}/${id}/resume`, { method: 'POST', body }),
   };
 }
 

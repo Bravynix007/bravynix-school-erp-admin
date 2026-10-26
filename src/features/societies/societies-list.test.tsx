@@ -29,15 +29,12 @@ beforeEach(() => {
 describe('SocietiesList', () => {
   it('lists the Societies with code, institution count and status, and opens one on click', async () => {
     api.list.mockResolvedValue(
-      page([
-        summary(),
-        summary({ id: 's2', code: 'NSS', name: 'Navodaya', paused: true, institutionCount: 0 }),
-      ]),
+      page([summary(), summary({ id: 's2', code: 'NSS', name: 'Navodaya', status: 0, institutionCount: 0 })]),
     );
     renderScreen(<SocietiesList />);
     expect(await screen.findByText('Sri Vidya Educational Society')).toBeInTheDocument();
     expect(screen.getByText('SVES')).toBeInTheDocument();
-    expect(screen.getAllByText('Paused').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Inactive').length).toBeGreaterThan(0);
     expect(screen.getAllByText('2 Societies').length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: /Onboard Society/ })).toHaveAttribute('href', '/societies/new');
 

@@ -19,7 +19,7 @@ import { societyWorkspaceHref } from './societies-list';
 import type { SocietyDetail } from './types';
 import { useSociety, useUpdateSociety } from './use-societies';
 
-/** PLT-05: edit the profile. The code and the access pause are not editable here (API design 10.4b). */
+/** PLT-05: edit the profile. The code is not editable here (API design 10.4b). */
 export function EditSociety() {
   const id = useSearchParams().get('id');
   const query = useSociety(id);

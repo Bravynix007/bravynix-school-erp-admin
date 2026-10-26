@@ -13,7 +13,6 @@ const row = {
   code: 'SVES',
   name: 'Sri Vidya Educational Society',
   status: 1,
-  paused: false,
   institutionCount: 1,
   ...stamps,
 };
@@ -25,9 +24,8 @@ const detail = (changes: object = {}) => ({
   website: null,
   foundedDate: '1998-06-01',
   address: { line1: '12 MG Road', line2: null, pincode: '560001' },
-  accessPause: null,
   version: 3,
-  institutions: [{ id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 1, paused: false }],
+  institutions: [{ id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 1 }],
   owners: [{ id: 'o1', displayName: 'Asha Rao', email: 'asha@example.org', accountStatus: 1 }],
   ...changes,
 });
@@ -112,39 +110,24 @@ test('a taken code sends the operator back to the profile with the reason', asyn
   await expect(page.getByLabel(/Society name/)).toHaveValue('Sunrise Trust');
 });
 
-test('pausing asks for a reason, and the page then shows the pause', async ({ page }) => {
+test('deactivating asks first, says what happens, and returns to the list', async ({ page }) => {
   await signIn(page);
-  let paused = false;
-  let body: unknown;
-  await mockApi(page, 'platform/societies/s1', () =>
-    envelope(
-      detail(
-        paused
-          ? {
-              accessPause: { pausedAt: '2026-10-05T04:30:00.000Z', pausedBy: actor, reason: 'Non-payment' },
-              version: 4,
-            }
-          : {},
-      ),
-    ),
-  );
-  await mockApi(page, 'platform/societies/s1/pause', (route) => {
-    body = route.request().postDataJSON();
-    paused = true;
-    return envelope(detail({ version: 4 }));
+  let deactivated = false;
+  await mockApi(page, 'platform/societies/s1', (route) => {
+    if (route.request().method() === 'DELETE') {
+      deactivated = true;
+      return envelope({ id: 's1', status: 0 });
+    }
+    return envelope(detail());
   });
+  await listOf(page, []);
 
   await page.goto('/societies/workspace/?id=s1');
-  await page.getByRole('button', { name: 'Pause access' }).click();
+  await page.getByRole('button', { name: 'Deactivate' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(/signed out/)).toBeVisible();
   expect(await axeViolations(page)).toEqual([]);
-  await dialog.getByRole('button', { name: 'Pause access' }).click();
-  await expect(dialog.getByText('Give the reason for the pause.')).toBeVisible();
-  await dialog.getByLabel(/Reason/).fill('Non-payment');
-  await dialog.getByRole('button', { name: 'Pause access' }).click();
-
-  await expect(page.getByText(/Access paused since/)).toContainText('Non-payment');
-  await expect(page.getByRole('button', { name: 'Resume access' })).toBeVisible();
-  expect(body).toEqual({ reason: 'Non-payment', version: 3 });
+  await dialog.getByRole('button', { name: 'Deactivate Society' }).click();
+  await expect(page).toHaveURL(/\/societies\/$/);
+  expect(deactivated).toBe(true);
 });

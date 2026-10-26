@@ -1,14 +1,13 @@
 import { StatusChip, statusTone } from '@/components/ui/status-chip';
 
-export type TenantStatus = keyof typeof statusTone.tenant;
+export type TenantStatus = 'Active' | 'Inactive';
 
-/** What the chip says for a Society or Institution: deactivated wins over paused (API design 10.4b). */
-export function tenantStatus(record: { status: number; paused: boolean }): TenantStatus {
-  if (record.status === 0) return 'Inactive';
-  return record.paused ? 'Paused' : 'Active';
+/** What the chip says for a Society or Institution: active or deactivated. Blocked sections are shown beside it. */
+export function tenantStatus(record: { status: number }): TenantStatus {
+  return record.status === 0 ? 'Inactive' : 'Active';
 }
 
-export function TenantStatusChip({ record }: { record: { status: number; paused: boolean } }) {
+export function TenantStatusChip({ record }: { record: { status: number } }) {
   const status = tenantStatus(record);
   return <StatusChip tone={statusTone.tenant[status]} label={status} />;
 }
