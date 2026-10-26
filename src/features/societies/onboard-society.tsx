@@ -12,6 +12,7 @@ import { Stepper } from '@/components/ui/stepper';
 import { TextField } from '@/components/ui/text-field';
 import { useToast } from '@/components/ui/toast';
 import { fieldErrorsOf } from '@/lib/api/field-errors';
+import { useOneAtATime } from '@/lib/hooks/use-one-at-a-time';
 import { formatSchoolDate } from '@/lib/format/date';
 import { MAX_OWNERS, newOwnerRow, ownerErrors, ownersBody, type OwnerRow } from './owner-rows';
 import { createBody, emptyProfile, profileErrors, type ProfileForm } from './society-form';
@@ -43,6 +44,7 @@ export function OnboardSociety() {
   const router = useRouter();
   const toast = useToast();
   const create = useCreateSociety();
+  const oneAtATime = useOneAtATime();
   const [step, setStep] = useState(0);
   const [profile, setProfile] = useState<ProfileForm>(emptyProfile);
   const [owners, setOwners] = useState<OwnerRow[]>([newOwnerRow(1)]);
@@ -84,19 +86,22 @@ export function OnboardSociety() {
   }
 
   function submit() {
-    create.mutate(createBody(profile, ownersBody(owners)), {
-      onSuccess: (society) => {
-        toast.success(`${society.name} onboarded`);
-        router.replace(societyWorkspaceHref(society.id));
-      },
-      onError: (error) => {
-        const fields = fieldErrorsOf(error);
-        const target = Object.keys(fields)
-          .map(stepOf)
-          .find((index) => index >= 0);
-        if (target !== undefined) goTo(target, fields);
-      },
-    });
+    oneAtATime((release) =>
+      create.mutate(createBody(profile, ownersBody(owners)), {
+        onSuccess: (society) => {
+          toast.success(`${society.name} onboarded`);
+          router.replace(societyWorkspaceHref(society.id));
+        },
+        onError: (error) => {
+          release();
+          const fields = fieldErrorsOf(error);
+          const target = Object.keys(fields)
+            .map(stepOf)
+            .find((index) => index >= 0);
+          if (target !== undefined) goTo(target, fields);
+        },
+      }),
+    );
   }
 
   /** The errors are keyed by row position, so they are dropped with the row; "Save and continue" finds them again. */

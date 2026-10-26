@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type * as SocietiesApiModule from './societies-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -76,6 +76,30 @@ describe('OnboardSociety', () => {
       code: 'SUNRISE',
       owners: [{ email: 'asha@example.org', firstName: 'Asha' }],
     });
+  });
+
+  it('sends the write once when Onboard Society is clicked twice, and again after a refusal', async () => {
+    let refuse: (error: ApiError) => void = () => {};
+    api.create
+      .mockImplementationOnce(() => new Promise((_, reject) => (refuse = reject)))
+      .mockResolvedValue(society());
+    renderScreen(<OnboardSociety />);
+    await fillProfile();
+    await userEvent.type(screen.getByLabelText(/Owner 1 email/), 'a@example.org');
+    await next();
+
+    // Both clicks land before React re-renders the button as disabled, as in a real double click.
+    const button = screen.getByRole('button', { name: 'Onboard Society' });
+    act(() => {
+      button.click();
+      button.click();
+    });
+    await waitFor(() => expect(api.create).toHaveBeenCalledTimes(1));
+
+    refuse(new ApiError(409, 'ACCOUNT_BLOCKED', 'x', 'req-5'));
+    await screen.findByText('ACCOUNT_BLOCKED');
+    await userEvent.click(screen.getByRole('button', { name: 'Onboard Society' }));
+    await waitFor(() => expect(api.create).toHaveBeenCalledTimes(2));
   });
 
   it('returns to the profile when the code is taken, with the error on the code field', async () => {

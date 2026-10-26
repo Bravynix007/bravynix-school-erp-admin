@@ -24,6 +24,7 @@ import { StampBlock } from '@/components/ui/stamp-block';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
 import { formatSchoolDate } from '@/lib/format/date';
+import { useOneAtATime } from '@/lib/hooks/use-one-at-a-time';
 import { useUrlState } from '@/lib/hooks/use-url-state';
 import { MAX_OWNERS } from './owner-rows';
 import type { SocietyDetail } from './types';
@@ -38,7 +39,8 @@ export const societyEditHref = (id: string) => `/societies/edit?id=${id}` as Rou
 
 /** PLT-04: one Society with its Owners and Institutions (STITCH_PROMPT 2.3). The ID is a query parameter, because the console is a static export. */
 export function SocietyWorkspace() {
-  const id = useSearchParams().get('id');
+  // An empty `?id=` is no ID: it would fetch the list as if it were one Society.
+  const id = useSearchParams().get('id') || null;
   const query = useSociety(id);
 
   if (id === null) return <RecordNotFound listHref="/societies" listLabel="Societies" />;
@@ -71,6 +73,7 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
   const [tab, setTab] = useUrlState('tab', 'overview', (value) => TABS.includes(value));
   const [deactivating, setDeactivating] = useState(false);
   const deactivate = useDeactivateSociety(society.id);
+  const oneAtATime = useOneAtATime();
 
   const deactivated = society.status === 0;
 
@@ -227,13 +230,16 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
           setDeactivating(false);
         }}
         onConfirm={() =>
-          deactivate.mutate(undefined, {
-            onSuccess: () => {
-              setDeactivating(false);
-              toast.success(`${society.name} deactivated`);
-              router.replace('/societies');
-            },
-          })
+          oneAtATime((release) =>
+            deactivate.mutate(undefined, {
+              onSuccess: () => {
+                setDeactivating(false);
+                toast.success(`${society.name} deactivated`);
+                router.replace('/societies');
+              },
+              onError: release,
+            }),
+          )
         }
       >
         {deactivate.isError ? (
