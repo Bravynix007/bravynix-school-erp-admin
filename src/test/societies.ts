@@ -1,5 +1,5 @@
 import type { Actor } from '@/lib/api/envelope';
-import type { Society, SocietyDetail, SocietySummary } from '@/features/societies/types';
+import type { SocietyDetail, SocietySummary } from '@/features/societies/types';
 
 const actor: Actor = { id: 'p1', displayName: 'A. Rao', roleName: 'Super Admin' };
 const stamps = {
@@ -37,5 +37,3 @@ export const society = (changes: Partial<SocietyDetail> = {}): SocietyDetail => 
   ...stamps,
   ...changes,
 });
-
-export type { Society };

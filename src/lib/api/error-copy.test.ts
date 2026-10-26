@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api-error';
-import { apiErrorMessage, isVersionConflict } from './error-copy';
+import { apiErrorMessage, isStale } from './error-copy';
 
 const error = (code: string, message = 'server text') => new ApiError(409, code, message, 'req');
 
@@ -27,8 +27,10 @@ describe('apiErrorMessage', () => {
     expect(apiErrorMessage(new Error('boom'))).toBe('Something went wrong. Try again.');
   });
 
-  it('spots a version conflict', () => {
-    expect(isVersionConflict(error('VERSION_CONFLICT'))).toBe(true);
-    expect(isVersionConflict(error('DUPLICATE'))).toBe(false);
+  it('spots a record that changed under the operator, or whose state no longer allows the action', () => {
+    expect(isStale(error('VERSION_CONFLICT'))).toBe(true);
+    expect(isStale(error('INVALID_STATE'))).toBe(true);
+    expect(isStale(error('DUPLICATE'))).toBe(false);
+    expect(isStale(new Error('x'))).toBe(false);
   });
 });

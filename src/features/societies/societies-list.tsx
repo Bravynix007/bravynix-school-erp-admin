@@ -2,7 +2,6 @@
 
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { IconPlus } from '@tabler/icons-react';
 import { LoadFailed } from '@/components/shell/load-failed';
 import { PageHeader } from '@/components/shell/page-header';
@@ -15,6 +14,7 @@ import { Mono } from '@/components/ui/mono';
 import { Pagination } from '@/components/ui/pagination';
 import { formatStamp } from '@/lib/format/date';
 import { useListControls } from '@/lib/hooks/use-list-controls';
+import { useUrlState } from '@/lib/hooks/use-url-state';
 import type { SocietySummary } from './types';
 import { useSocietyList } from './use-societies';
 
@@ -31,7 +31,9 @@ export const societyWorkspaceHref = (id: string) => `/societies/workspace?id=${i
 export function SocietiesList() {
   const router = useRouter();
   const controls = useListControls('name');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useUrlState('status', '', (value) =>
+    STATUS_OPTIONS.some((option) => option.value === value),
+  );
   const list = useSocietyList({
     page: controls.page,
     limit: PAGE_SIZE,
