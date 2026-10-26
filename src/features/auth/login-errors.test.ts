@@ -22,6 +22,28 @@ describe('login errors', () => {
     );
   });
 
+  it('says how long a lock lasts, in minutes or hours', () => {
+    expect(loginErrorMessage(error('AUTH_LOCKED', {}, 1800))).toBe(
+      'Too many failed sign-ins. Try again in 30 minutes.',
+    );
+    expect(loginErrorMessage(error('AUTH_LOCKED', {}, 86_400))).toBe(
+      'Too many failed sign-ins. Try again in 24 hours.',
+    );
+    expect(loginErrorMessage(error('AUTH_LOCKED', {}, 3600))).toBe(
+      'Too many failed sign-ins. Try again in 1 hour.',
+    );
+    expect(loginErrorMessage(error('AUTH_LOCKED'))).toBe(
+      'Too many failed sign-ins. This email is locked for 30 minutes.',
+    );
+  });
+
+  it('explains the authenticator states that need a fresh start', () => {
+    for (const code of ['MFA_ALREADY_ENROLLED', 'MFA_NOT_ENROLLED']) {
+      expect(loginErrorMessage(error(code))).not.toBe('server text');
+      expect(isRestartError(error(code))).toBe(true);
+    }
+  });
+
   it('falls back to the server message for unknown codes', () => {
     expect(loginErrorMessage(error('SOMETHING_NEW'))).toBe('server text');
     expect(loginErrorMessage(new Error('x'))).toBe('Something went wrong. Try again.');
