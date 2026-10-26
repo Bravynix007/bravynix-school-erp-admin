@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { SeatMeter } from '@/components/ui/seat-meter';
 import { useToast } from '@/components/ui/toast';
 import { formatInstant } from '@/lib/format/date';
-import { useOneAtATime } from '@/lib/hooks/use-one-at-a-time';
+import { useGuardedWrite } from '@/lib/hooks/use-one-at-a-time';
 import { AddPersonDialog } from './person-dialogs';
 import { PersonSheet } from './person-sheet';
 import { MAX_SUPER_ADMINS, type SuperAdmin } from './types';
@@ -55,7 +55,7 @@ export function SuperAdminsTab({
   const add = useAddSuperAdmin();
   const toast = useToast();
   const [adding, setAdding] = useState(false);
-  const oneAtATime = useOneAtATime();
+  const attempt = useGuardedWrite();
 
   if (list.isError) {
     return (
@@ -118,15 +118,12 @@ export function SuperAdminsTab({
             setAdding(false);
           }}
           onSubmit={(body) =>
-            oneAtATime((release) =>
-              add.mutate(body, {
-                onSuccess: (person) => {
-                  release();
-                  setAdding(false);
-                  toast.success(`${person.displayName} added as Super Admin`);
-                },
-                onError: release,
-              }),
+            attempt<SuperAdmin>(
+              (settled) => add.mutate(body, settled),
+              (person) => {
+                setAdding(false);
+                toast.success(`${person.displayName} added as Super Admin`);
+              },
             )
           }
         />

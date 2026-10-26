@@ -25,7 +25,7 @@ import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
 import { AddPersonDialog } from '@/features/users/person-dialogs';
 import { formatSchoolDate } from '@/lib/format/date';
-import { useOneAtATime } from '@/lib/hooks/use-one-at-a-time';
+import { useGuardedWrite, useOneAtATime } from '@/lib/hooks/use-one-at-a-time';
 import { useUrlState } from '@/lib/hooks/use-url-state';
 import { MAX_OWNERS } from './owner-rows';
 import type { SocietyDetail } from './types';
@@ -80,6 +80,7 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
   const [addingOwner, setAddingOwner] = useState(false);
   const [removing, setRemoving] = useState<Owner | null>(null);
   const oneAtATime = useOneAtATime();
+  const attempt = useGuardedWrite();
   // Where focus lands when a removed Owner's own button is gone (DESIGN.md 15).
   const ownersRef = useRef<HTMLDivElement>(null);
 
@@ -270,15 +271,12 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
             setAddingOwner(false);
           }}
           onSubmit={(body) =>
-            oneAtATime((release) =>
-              addOwner.mutate(body, {
-                onSuccess: () => {
-                  release();
-                  setAddingOwner(false);
-                  toast.success('Owner added');
-                },
-                onError: release,
-              }),
+            attempt(
+              (settled) => addOwner.mutate(body, settled),
+              () => {
+                setAddingOwner(false);
+                toast.success('Owner added');
+              },
             )
           }
         />
@@ -297,16 +295,13 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
         }}
         onConfirm={() => {
           if (removing === null) return;
-          oneAtATime((release) =>
-            removeOwner.mutate(removing.id, {
-              onSuccess: () => {
-                release();
-                toast.success(`${removing.displayName} removed`);
-                setRemoving(null);
-                window.setTimeout(() => ownersRef.current?.focus(), 0);
-              },
-              onError: release,
-            }),
+          attempt(
+            (settled) => removeOwner.mutate(removing.id, settled),
+            () => {
+              toast.success(`${removing.displayName} removed`);
+              setRemoving(null);
+              window.setTimeout(() => ownersRef.current?.focus(), 0);
+            },
           );
         }}
       >

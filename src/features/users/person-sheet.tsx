@@ -10,7 +10,7 @@ import { KeyValueList } from '@/components/ui/key-value-list';
 import { LinkButton } from '@/components/ui/link-button';
 import { SideSheet } from '@/components/ui/side-sheet';
 import { useToast } from '@/components/ui/toast';
-import { useOneAtATime } from '@/lib/hooks/use-one-at-a-time';
+import { useGuardedWrite } from '@/lib/hooks/use-one-at-a-time';
 import { societyWorkspaceHref } from '@/features/societies/societies-list';
 import { formatInstant } from '@/lib/format/date';
 import { ChangeEmailDialog, ReasonDialog } from './person-dialogs';
@@ -54,21 +54,7 @@ export function PersonSheet({
   const admin = isSuperAdmin(person);
 
   /** One write at a time: a double click lands before the dialog shows it is busy. */
-  const oneAtATime = useOneAtATime();
-  function attempt(
-    send: (settled: { onSuccess: () => void; onError: () => void }) => void,
-    done: () => void,
-  ) {
-    oneAtATime((release) =>
-      send({
-        onSuccess: () => {
-          release();
-          done();
-        },
-        onError: release,
-      }),
-    );
-  }
+  const attempt = useGuardedWrite();
 
   function finish(message: string) {
     setAction(null);

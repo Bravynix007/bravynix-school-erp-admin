@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type * as SocietiesApiModule from './societies-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -155,6 +155,38 @@ describe('SocietyWorkspace', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove Owner' }));
     expect(api.removeOwner).toHaveBeenCalledWith('s1', 'o1');
     expect(await within(dialog).findByText(/must keep at least one Owner/)).toBeInTheDocument();
+  });
+
+  it('moves focus to the Owners group once the removed Owner’s own button is gone', async () => {
+    api.get.mockResolvedValue(society());
+    api.removeOwner.mockResolvedValue({ id: 'o1', status: 0 });
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: /Owners/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Asha Rao' }));
+    const dialog = screen.getByRole('dialog', { name: /Remove Asha Rao as Owner/ });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Remove Owner' }));
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Owners' })).toHaveFocus());
+  });
+
+  it('sends a removal once when the button is clicked twice before the dialog shows it is busy', async () => {
+    api.get.mockResolvedValue(society());
+    api.removeOwner.mockImplementation(() => new Promise(() => {}));
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: /Owners/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Asha Rao' }));
+    const confirm = within(screen.getByRole('dialog', { name: /Remove Asha Rao as Owner/ })).getByRole(
+      'button',
+      {
+        name: 'Remove Owner',
+      },
+    );
+    act(() => {
+      confirm.click();
+      confirm.click();
+    });
+    await waitFor(() => expect(api.removeOwner).toHaveBeenCalledTimes(1));
   });
 
   it('offers no Owner changes on a deactivated Society', async () => {
