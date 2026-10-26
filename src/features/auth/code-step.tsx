@@ -9,6 +9,7 @@ import { ApiError } from '@/lib/api/api-error';
 import { authApi, isMfaChallenge, type LoginTokens, type MfaChallenge } from '@/lib/auth/auth-api';
 import { formatCountdown, useCountdown } from '@/lib/hooks/use-countdown';
 import { isLockedOut, isRestartError, loginErrorMessage, maskEmail } from './login-errors';
+import { RestartPanel } from './restart-panel';
 
 /** Screen 2: six digit boxes, Verify, resend timer, "Use a different email". */
 export function CodeStep({
@@ -53,17 +54,10 @@ export function CodeStep({
   const bandError = error && !codeError ? loginErrorMessage(error) : null;
 
   // A locked email cannot be sent a new code, so there is nothing to type or resend: only a way back.
-  // Either call may carry the lock; focus moves to the way back because the code boxes are gone.
+  // Either call may carry the lock.
   const locked = [verify.error, resend.error].find(isLockedOut);
   if (locked) {
-    return (
-      <div className="flex flex-col gap-5">
-        <InlineAlert tone="error">{loginErrorMessage(locked)}</InlineAlert>
-        <Button className="w-full" onClick={onChangeEmail} autoFocus>
-          Start again
-        </Button>
-      </div>
-    );
+    return <RestartPanel message={loginErrorMessage(locked)} onRestart={onChangeEmail} />;
   }
 
   return (

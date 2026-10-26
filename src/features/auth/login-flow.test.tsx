@@ -178,8 +178,22 @@ describe('LoginFlow', () => {
     await screen.findByText('Enter the code from your authenticator app');
     await typeCode('135790');
     expect(await screen.findByText('This sign-in took too long. Start again.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start again' })).toHaveFocus();
     await userEvent.click(screen.getByRole('button', { name: 'Start again' }));
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
+  });
+
+  it('ends the sign-in on the fifth wrong authenticator code and moves focus to Start again', async () => {
+    await reachCodeStep();
+    authApi.verifyOtp.mockResolvedValue({ mfaRequired: true, mfaToken: 'mfa-2', mfaEnrolled: true });
+    authApi.verifyMfa.mockRejectedValue(new ApiError(401, 'MFA_INVALID', 'x', 'r', [], { attemptsLeft: 0 }));
+    await typeCode('482017');
+    await screen.findByText('Enter the code from your authenticator app');
+    await typeCode('135790');
+    expect(
+      await screen.findByText('Too many incorrect authenticator codes. Start again.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start again' })).toHaveFocus();
   });
 
   it('asks an enrolled Super Admin for the authenticator code only', async () => {
