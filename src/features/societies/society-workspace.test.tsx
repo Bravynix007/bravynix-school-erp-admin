@@ -165,4 +165,11 @@ describe('SocietyWorkspace', () => {
     expect(screen.queryByRole('button', { name: 'Add an Owner' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Remove Asha Rao' })).not.toBeInTheDocument();
   });
+
+  it('treats an empty ?id= as no ID, and does not fetch the list as if it were one Society', () => {
+    id = '';
+    renderScreen(<SocietyWorkspace />);
+    expect(screen.getByText(/no longer exists/)).toBeInTheDocument();
+    expect(api.get).not.toHaveBeenCalled();
+  });
 });
