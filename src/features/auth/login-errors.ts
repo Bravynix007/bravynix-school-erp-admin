@@ -43,7 +43,9 @@ export function loginErrorMessage(error: unknown): string {
       return 'The console is for Super Admins only. Use the BravyNix app instead.';
     // API design 6.2, 8.1.
     case 'MFA_INVALID':
-      return 'Incorrect authenticator code. Check the time on your phone and try again.';
+      return mfaTriesSpent(error)
+        ? 'Too many incorrect authenticator codes. Start again.'
+        : 'Incorrect authenticator code. Check the time on your phone and try again.';
     case 'MFA_TOKEN_EXPIRED':
       return 'This sign-in took too long. Start again.';
     // The token's state and the account's disagree, for instance after setup in another tab.
@@ -80,18 +82,24 @@ export function isLockedOut(error: unknown): boolean {
   );
 }
 
+/** The last wrong code a sign-in token allows: the token is dead (API design 10.2b). */
+function mfaTriesSpent(error: ApiError): boolean {
+  return error.code === 'MFA_INVALID' && error.details.attemptsLeft === 0;
+}
+
 /** Errors after which the current code or MFA token is dead and the flow restarts. */
 export function isRestartError(error: unknown): boolean {
   return (
     error instanceof ApiError &&
-    [
-      'OTP_EXPIRED',
-      'OTP_ATTEMPTS_EXCEEDED',
-      'AUTH_LOCKED',
-      'MFA_TOKEN_EXPIRED',
-      'MFA_ALREADY_ENROLLED',
-      'MFA_NOT_ENROLLED',
-    ].includes(error.code)
+    (mfaTriesSpent(error) ||
+      [
+        'OTP_EXPIRED',
+        'OTP_ATTEMPTS_EXCEEDED',
+        'AUTH_LOCKED',
+        'MFA_TOKEN_EXPIRED',
+        'MFA_ALREADY_ENROLLED',
+        'MFA_NOT_ENROLLED',
+      ].includes(error.code))
   );
 }
 

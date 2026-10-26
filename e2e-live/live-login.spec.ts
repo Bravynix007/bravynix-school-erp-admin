@@ -62,14 +62,14 @@ test.describe.serial('Super Admin sign-in against the real API', () => {
     test.setTimeout(120_000);
     await waitForResendGap(page, SA2);
     await signInUntilAuthenticator(page, SA2, { enrol: false });
-    // The sixth try finds the token dead (API design 10.2b): it answers MFA_TOKEN_EXPIRED.
-    for (let attempt = 1; attempt <= 5; attempt++) {
+    // The fifth wrong code is the last this sign-in allows (API design 10.2b).
+    for (let attempt = 1; attempt <= 4; attempt++) {
       await page.getByLabel('Digit 1 of 6').pressSequentially('000000');
       await expect(page.getByText('Incorrect authenticator code')).toBeVisible();
       await expect(page.getByLabel('Digit 1 of 6')).toHaveValue('');
     }
     await page.getByLabel('Digit 1 of 6').pressSequentially('000000');
-    await expect(page.getByText('This sign-in took too long. Start again.')).toBeVisible();
+    await expect(page.getByText('Too many incorrect authenticator codes. Start again.')).toBeVisible();
 
     await page.getByRole('button', { name: 'Start again' }).click();
     await expect(page.getByLabel('Email')).toBeVisible();
