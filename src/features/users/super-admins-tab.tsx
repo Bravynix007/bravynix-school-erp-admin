@@ -43,12 +43,17 @@ const columns: Column<SuperAdmin>[] = [
 ];
 
 /** PLT-12 to PLT-14: the Super Admins by seat, at most three (API design 10.4d). */
-export function SuperAdminsTab() {
+export function SuperAdminsTab({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
   const list = useSuperAdmins();
   const add = useAddSuperAdmin();
   const toast = useToast();
   const [adding, setAdding] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   if (list.isError) {
     return (
@@ -86,8 +91,8 @@ export function SuperAdminsTab() {
         getRowId={(row) => row.id}
         loading={list.isPending}
         refreshing={list.isRefetching}
-        selectedId={selectedId ?? undefined}
-        onRowOpen={(row) => setSelectedId(row.id)}
+        selectedId={selectedId || undefined}
+        onRowOpen={(row) => onSelect(row.id)}
         empty={<EmptyState title="No Super Admins" description="Add one so someone can run the console." />}
       />
 
@@ -121,11 +126,7 @@ export function SuperAdminsTab() {
         />
       ) : null}
       {selected ? (
-        <PersonSheet
-          person={selected}
-          onClose={() => setSelectedId(null)}
-          reload={() => void list.refetch()}
-        />
+        <PersonSheet person={selected} onClose={() => onSelect('')} reload={() => void list.refetch()} />
       ) : null}
     </div>
   );

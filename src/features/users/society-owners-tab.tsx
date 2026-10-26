@@ -9,7 +9,6 @@ import { Mono } from '@/components/ui/mono';
 import { Pagination } from '@/components/ui/pagination';
 import { formatInstant } from '@/lib/format/date';
 import { useListControls } from '@/lib/hooks/use-list-controls';
-import { useState } from 'react';
 import { PersonSheet } from './person-sheet';
 import type { SocietyOwner } from './types';
 import { useOwnerList } from './use-users';
@@ -51,7 +50,13 @@ const columns: Column<SocietyOwner>[] = [
 ];
 
 /** PLT-11: every Society Owner, searchable by name or email. Seats are added and removed from the Society. */
-export function SocietyOwnersTab() {
+export function SocietyOwnersTab({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
   const controls = useListControls('name');
   const list = useOwnerList({
     page: controls.page,
@@ -59,7 +64,6 @@ export function SocietyOwnersTab() {
     sort: controls.sortParam,
     q: controls.q,
   });
-  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selected = list.data?.items.find((row) => row.id === selectedId);
   const total = list.data?.meta.totalItems;
@@ -91,8 +95,8 @@ export function SocietyOwnersTab() {
           refreshing={list.isPlaceholderData}
           sort={controls.sort}
           onSort={controls.toggleSort}
-          selectedId={selectedId ?? undefined}
-          onRowOpen={(row) => setSelectedId(row.id)}
+          selectedId={selectedId || undefined}
+          onRowOpen={(row) => onSelect(row.id)}
           empty={
             filtered ? (
               <EmptyState title="No Owners match" description="Clear the search to see all of them." />
@@ -117,11 +121,7 @@ export function SocietyOwnersTab() {
         />
       )}
       {selected ? (
-        <PersonSheet
-          person={selected}
-          onClose={() => setSelectedId(null)}
-          reload={() => void list.refetch()}
-        />
+        <PersonSheet person={selected} onClose={() => onSelect('')} reload={() => void list.refetch()} />
       ) : null}
     </div>
   );

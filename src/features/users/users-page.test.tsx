@@ -22,9 +22,9 @@ vi.mock('./users-api', async (original) => ({
   ...(await original<typeof UsersApiModule>()),
   usersApi: api,
 }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 beforeEach(() => {
+  window.history.replaceState(null, '', '/users/');
   for (const fn of Object.values(api)) fn.mockReset();
   api.superAdmins.mockResolvedValue([
     superAdmin(),
@@ -259,5 +259,31 @@ describe('Society Owners', () => {
     renderScreen(<UsersPage />);
     await userEvent.click(await screen.findByRole('tab', { name: 'Society Owners' }));
     expect(await screen.findByText('No Owners yet')).toBeInTheDocument();
+  });
+
+  it('keeps the tab and the open person in the URL, and opens them again from a shared link', async () => {
+    const first = renderScreen(<UsersPage />);
+    await userEvent.click(await screen.findByRole('tab', { name: 'Society Owners' }));
+    expect(window.location.search).toBe('?tab=owners');
+    await userEvent.click(await screen.findByRole('button', { name: /Asha Rao/ }));
+    expect(window.location.search).toBe('?tab=owners&person=o1');
+    await userEvent.click(
+      within(screen.getByRole('dialog', { name: 'Asha Rao' })).getByRole('button', { name: 'Close' }),
+    );
+    expect(window.location.search).toBe('?tab=owners');
+    await userEvent.click(screen.getByRole('tab', { name: 'Super Admins' }));
+    expect(window.location.search).toBe('');
+    first.unmount();
+
+    window.history.replaceState(null, '', '/users/?tab=owners&person=o1');
+    renderScreen(<UsersPage />);
+    expect(await screen.findByRole('dialog', { name: 'Asha Rao' })).toBeInTheDocument();
+  });
+
+  it('opens nothing for a person who is not in the list, such as a stale link', async () => {
+    window.history.replaceState(null, '', '/users/?person=gone');
+    renderScreen(<UsersPage />);
+    await screen.findByText('Ananya Rao');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
