@@ -24,6 +24,7 @@ import { StampBlock } from '@/components/ui/stamp-block';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
 import { formatSchoolDate } from '@/lib/format/date';
+import { useUrlState } from '@/lib/hooks/use-url-state';
 import { MAX_OWNERS } from './owner-rows';
 import type { SocietyDetail } from './types';
 import { useDeactivateSociety, useSociety } from './use-societies';
@@ -31,6 +32,7 @@ import { useDeactivateSociety, useSociety } from './use-societies';
 type Institution = SocietyDetail['institutions'][number];
 
 const TAB_PREFIX = 'society';
+const TABS = ['overview', 'owners', 'institutions'];
 
 export const societyEditHref = (id: string) => `/societies/edit?id=${id}` as Route;
 
@@ -66,7 +68,7 @@ function WorkspaceSkeleton() {
 function Workspace({ society, reload }: { society: SocietyDetail; reload: () => void }) {
   const router = useRouter();
   const toast = useToast();
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useUrlState('tab', 'overview', (value) => TABS.includes(value));
   const [deactivating, setDeactivating] = useState(false);
   const deactivate = useDeactivateSociety(society.id);
 

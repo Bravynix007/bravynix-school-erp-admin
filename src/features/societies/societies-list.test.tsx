@@ -8,7 +8,10 @@ import { summary } from '@/test/societies';
 import { SocietiesList } from './societies-list';
 
 const push = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
 
 const api = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock('./societies-api', async (original) => ({
@@ -24,6 +27,7 @@ const page = (items: ReturnType<typeof summary>[], totalItems = items.length) =>
 beforeEach(() => {
   api.list.mockReset();
   push.mockReset();
+  window.history.replaceState(null, '', '/societies/');
 });
 
 describe('SocietiesList', () => {
@@ -90,5 +94,32 @@ describe('SocietiesList', () => {
     api.list.mockRejectedValue(new ApiError(403, 'FORBIDDEN', 'x', 'r'));
     renderScreen(<SocietiesList />);
     expect(await screen.findByText("You don't have access to this")).toBeInTheDocument();
+  });
+
+  it('starts from the page, search, sort and status in the URL, and writes them back as they change', async () => {
+    window.history.replaceState(null, '', '/societies/?q=sri&page=2&sort=-code&status=inactive');
+    api.list.mockResolvedValue(page([summary()], 45));
+    renderScreen(<SocietiesList />);
+    await screen.findByText('Sri Vidya Educational Society');
+    expect(api.list).toHaveBeenLastCalledWith({
+      page: 2,
+      limit: 20,
+      sort: '-code',
+      q: 'sri',
+      status: 'inactive',
+    });
+    expect(screen.getByLabelText('Search Societies')).toHaveValue('sri');
+
+    await userEvent.clear(screen.getByLabelText('Search Societies'));
+    await waitFor(() => expect(window.location.search).toBe('?sort=-code&status=inactive'));
+  });
+
+  it('ignores a status it does not know, and stops the search box at the 100 characters the API allows', async () => {
+    window.history.replaceState(null, '', '/societies/?status=nonsense');
+    api.list.mockResolvedValue(page([summary()]));
+    renderScreen(<SocietiesList />);
+    await screen.findByText('Sri Vidya Educational Society');
+    expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ status: '' }));
+    expect(screen.getByLabelText('Search Societies')).toHaveAttribute('maxlength', '100');
   });
 });

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, vi } from 'vitest';
 
 afterEach(() => cleanup());
 
@@ -16,3 +16,11 @@ if (typeof HTMLDialogElement !== 'undefined' && typeof HTMLDialogElement.prototy
     this.dispatchEvent(new Event('close'));
   };
 }
+
+// Screens read their starting state from the query (DESIGN.md 13). A test that needs the router or other
+// parameters mocks `next/navigation` itself and adds `useSearchParams` from this file's pattern.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
+  usePathname: () => window.location.pathname,
+}));

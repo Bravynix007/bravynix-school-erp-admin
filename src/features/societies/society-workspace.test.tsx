@@ -11,7 +11,9 @@ const replace = vi.fn();
 let id: string | null = 's1';
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace }),
-  useSearchParams: () => ({ get: () => id }),
+  useSearchParams: () => ({
+    get: (key: string) => (key === 'id' ? id : new URLSearchParams(window.location.search).get(key)),
+  }),
 }));
 
 const api = vi.hoisted(() => ({ get: vi.fn(), deactivate: vi.fn() }));
@@ -24,6 +26,7 @@ beforeEach(() => {
   for (const fn of Object.values(api)) fn.mockReset();
   replace.mockReset();
   id = 's1';
+  window.history.replaceState(null, '', '/societies/workspace/?id=s1');
 });
 
 describe('SocietyWorkspace', () => {
@@ -53,6 +56,30 @@ describe('SocietyWorkspace', () => {
     expect(screen.getByText('Sri Vidya High School')).toBeInTheDocument();
   });
 
+  it('keeps the open tab in the URL, and opens it again from a shared link', async () => {
+    api.get.mockResolvedValue(society());
+    const first = renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: /Owners/ }));
+    expect(window.location.search).toBe('?id=s1&tab=owners');
+    await userEvent.click(screen.getByRole('tab', { name: 'Overview' }));
+    expect(window.location.search).toBe('?id=s1');
+    first.unmount();
+
+    window.history.replaceState(null, '', '/societies/workspace/?id=s1&tab=institutions');
+    renderScreen(<SocietyWorkspace />);
+    expect(await screen.findByText('Sri Vidya High School')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Institutions/ })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('ignores a tab name it does not know', async () => {
+    window.history.replaceState(null, '', '/societies/workspace/?id=s1&tab=nonsense');
+    api.get.mockResolvedValue(society());
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('shows the error inside the confirmation when the API refuses, and keeps the Society', async () => {
     api.get.mockResolvedValue(society());
     api.deactivate.mockRejectedValue(new ApiError(409, 'INVALID_STATE', 'x', 'req-3'));
@@ -61,6 +88,8 @@ describe('SocietyWorkspace', () => {
     const dialog = screen.getByRole('dialog');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Deactivate Society' }));
     expect(await within(dialog).findByText('INVALID_STATE')).toBeInTheDocument();
+    // The copy says "Reload", so the dialog offers it.
+    expect(within(dialog).getByRole('button', { name: 'Reload' })).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
   });
 

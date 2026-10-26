@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { PageHeader } from '@/components/shell/page-header';
 import { WriteError } from '@/components/shell/write-error';
@@ -25,6 +25,9 @@ const STEPS = [
   { key: 'review', label: 'Review' },
 ];
 
+const ADD_OWNER_ID = 'add-owner';
+const ownerEmailId = (key: number) => `owner-email-${key}`;
+
 const PROFILE_FIELDS = ['name', 'code', 'description', 'email', 'website', 'foundedDate', 'phone', 'address'];
 
 /** Which step a server field error belongs on. */
@@ -45,6 +48,24 @@ export function OnboardSociety() {
   const [owners, setOwners] = useState<OwnerRow[]>([newOwnerRow(1)]);
   const [nextKey, setNextKey] = useState(2);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // When the step changes, the control that was focused is gone or disabled, so focus moves to the new step's
+  // heading: a keyboard user continues from there and a screen reader says which step it is (WCAG 2.4.3).
+  const heading = useRef<HTMLHeadingElement>(null);
+  const shownStep = useRef(step);
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    heading.current?.focus();
+  }, [step]);
+
+  // After a row is removed, focus goes to the field of the row that took its place, or to Add Owner.
+  const focusAfterRemove = useRef<string | null>(null);
+  useEffect(() => {
+    if (focusAfterRemove.current === null) return;
+    document.getElementById(focusAfterRemove.current)?.focus();
+    focusAfterRemove.current = null;
+  }, [owners]);
 
   function goTo(index: number, nextErrors: Record<string, string> = {}) {
     setErrors(nextErrors);
@@ -78,6 +99,17 @@ export function OnboardSociety() {
     });
   }
 
+  /** The errors are keyed by row position, so they are dropped with the row; "Save and continue" finds them again. */
+  function removeOwner(index: number) {
+    const rest = owners.filter((_, position) => position !== index);
+    const taker = rest[index];
+    focusAfterRemove.current = taker ? ownerEmailId(taker.key) : ADD_OWNER_ID;
+    setOwners(rest);
+    setErrors((current) =>
+      Object.fromEntries(Object.entries(current).filter(([field]) => !field.startsWith('owners'))),
+    );
+  }
+
   const setOwner = (key: number, changes: Partial<OwnerRow>) =>
     setOwners((rows) => rows.map((row) => (row.key === key ? { ...row, ...changes } : row)));
 
@@ -102,6 +134,9 @@ export function OnboardSociety() {
           else submit();
         }}
       >
+        <h2 ref={heading} tabIndex={-1} className="sr-only">
+          Step {step + 1} of {STEPS.length}: {STEPS[step]!.label}
+        </h2>
         {step === 0 ? <SocietyProfileFields value={profile} onChange={setProfile} errors={errors} /> : null}
 
         {step === 1 ? (
@@ -134,6 +169,7 @@ export function OnboardSociety() {
                   autoComplete="off"
                 />
                 <TextField
+                  id={ownerEmailId(row.key)}
                   label={`Owner ${index + 1} email`}
                   type="email"
                   requiredMark
@@ -146,14 +182,16 @@ export function OnboardSociety() {
                   variant="secondary"
                   className="sm:mt-[1.65rem]"
                   aria-label={`Remove Owner ${index + 1}`}
+                  title={`Remove Owner ${index + 1}`}
                   icon={<IconTrash size={18} aria-hidden="true" />}
                   disabled={owners.length === 1}
-                  onClick={() => setOwners((rows) => rows.filter((r) => r.key !== row.key))}
+                  onClick={() => removeOwner(index)}
                 />
               </div>
             ))}
             {owners.length < MAX_OWNERS ? (
               <Button
+                id={ADD_OWNER_ID}
                 variant="secondary"
                 className="self-start"
                 icon={<IconPlus size={18} aria-hidden="true" />}

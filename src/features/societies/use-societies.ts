@@ -26,16 +26,13 @@ export function useSociety(id: string | null) {
   });
 }
 
-/** Every Society write refreshes the lists and the open detail, and the Institution lists that carry the Society's state. */
+/** Every Society write refreshes the lists and the open detail. */
 function useSocietyWrite<Input, Output>(write: (input: Input) => Promise<Output>) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: write,
     onSuccess: async () => {
-      await Promise.all([
-        client.invalidateQueries({ queryKey: societyKeys.all }),
-        client.invalidateQueries({ queryKey: ['institutions'] }),
-      ]);
+      await client.invalidateQueries({ queryKey: societyKeys.all });
     },
   });
 }

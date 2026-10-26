@@ -65,6 +65,8 @@ export function FilterBar({
           label={searchLabel}
           hideLabel
           type="search"
+          // The API refuses a search of more than 100 characters (API design 13.1).
+          maxLength={100}
           placeholder={searchPlaceholder ?? (shortcuts ? `${searchLabel} (press /)` : searchLabel)}
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}

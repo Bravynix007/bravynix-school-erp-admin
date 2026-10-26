@@ -131,3 +131,22 @@ test('deactivating asks first, says what happens, and returns to the list', asyn
   await expect(page).toHaveURL(/\/societies\/$/);
   expect(deactivated).toBe(true);
 });
+
+test('the open tab and the list search survive a refresh', async ({ page }) => {
+  await signIn(page);
+  await mockApi(page, 'platform/societies/s1', () => envelope(detail()));
+  await listOf(page, [row]);
+
+  await page.goto('/societies/workspace/?id=s1');
+  await page.getByRole('tab', { name: /Owners/ }).click();
+  await expect(page).toHaveURL(/id=s1&tab=owners$/);
+  await page.reload();
+  await expect(page.getByRole('tab', { name: /Owners/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText('Asha Rao')).toBeVisible();
+
+  await page.goto('/societies/');
+  await page.getByLabel('Search Societies').fill('vidya');
+  await expect(page).toHaveURL(/\?q=vidya$/);
+  await page.reload();
+  await expect(page.getByLabel('Search Societies')).toHaveValue('vidya');
+});

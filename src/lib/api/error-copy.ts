@@ -31,7 +31,10 @@ export function apiErrorMessage(error: unknown, overrides: Record<string, string
   return overrides[error.code] ?? COPY[error.code] ?? (error.message || 'Something went wrong. Try again.');
 }
 
-/** A refusal because the record changed under the operator: the screen offers Reload (DESIGN.md 16). */
-export function isVersionConflict(error: unknown): boolean {
-  return error instanceof ApiError && error.code === 'VERSION_CONFLICT';
+/**
+ * A refusal because the record is no longer as the screen showed it: it changed under the operator, or its
+ * state no longer allows the action. Both copy lines say "Reload", so the screen offers it (DESIGN.md 16).
+ */
+export function isStale(error: unknown): boolean {
+  return error instanceof ApiError && (error.code === 'VERSION_CONFLICT' || error.code === 'INVALID_STATE');
 }

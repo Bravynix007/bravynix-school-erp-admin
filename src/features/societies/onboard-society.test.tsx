@@ -8,7 +8,10 @@ import { society } from '@/test/societies';
 import { OnboardSociety } from './onboard-society';
 
 const replace = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace }) }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace }),
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 const api = vi.hoisted(() => ({ create: vi.fn() }));
 vi.mock('./societies-api', async (original) => ({
@@ -122,5 +125,87 @@ describe('OnboardSociety', () => {
     await fillProfile();
     await userEvent.click(screen.getByRole('button', { name: /Profile/ }));
     expect(screen.getByLabelText(/Society name/)).toHaveValue('Sunrise Trust');
+  });
+
+  describe('focus', () => {
+    const stepHeading = (name: string) => screen.getByRole('heading', { name, level: 2 });
+
+    async function reachReview() {
+      await fillProfile();
+      await userEvent.type(screen.getByLabelText(/Owner 1 email/), 'asha@example.org');
+      await next();
+    }
+
+    it('moves to the step heading when the step changes, forwards, back and from the Stepper', async () => {
+      renderScreen(<OnboardSociety />);
+      await fillProfile();
+      expect(stepHeading('Step 2 of 3: Owners')).toHaveFocus();
+      await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+      expect(stepHeading('Step 1 of 3: Profile')).toHaveFocus();
+      await next();
+      await userEvent.type(screen.getByLabelText(/Owner 1 email/), 'asha@example.org');
+      await next();
+      expect(stepHeading('Step 3 of 3: Review')).toHaveFocus();
+      await userEvent.click(screen.getByRole('button', { name: /Step 1, done/ }));
+      expect(stepHeading('Step 1 of 3: Profile')).toHaveFocus();
+    });
+
+    it('moves to the heading when Review sends the operator back to edit', async () => {
+      renderScreen(<OnboardSociety />);
+      await reachReview();
+      await userEvent.click(screen.getByRole('button', { name: 'Edit profile' }));
+      expect(stepHeading('Step 1 of 3: Profile')).toHaveFocus();
+      await next();
+      await next();
+      await userEvent.click(screen.getByRole('button', { name: 'Edit Owners' }));
+      expect(stepHeading('Step 2 of 3: Owners')).toHaveFocus();
+    });
+
+    it('does not take focus when the screen opens', () => {
+      renderScreen(<OnboardSociety />);
+      expect(stepHeading('Step 1 of 3: Profile')).not.toHaveFocus();
+    });
+
+    it('after Remove, goes to the field of the Owner who took the place, or to Add Owner for the last', async () => {
+      renderScreen(<OnboardSociety />);
+      await fillProfile();
+      await userEvent.click(screen.getByRole('button', { name: 'Add Owner' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Add Owner' }));
+      await userEvent.type(screen.getByLabelText(/Owner 2 email/), 'two@example.org');
+      await userEvent.type(screen.getByLabelText(/Owner 3 email/), 'three@example.org');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Remove Owner 2' }));
+      expect(screen.getByLabelText(/Owner 2 email/)).toHaveValue('three@example.org');
+      expect(screen.getByLabelText(/Owner 2 email/)).toHaveFocus();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Remove Owner 2' }));
+      expect(screen.getByRole('button', { name: 'Add Owner' })).toHaveFocus();
+    });
+  });
+
+  it('drops the Owner errors with a removed row, so none lands on a valid email', async () => {
+    renderScreen(<OnboardSociety />);
+    await fillProfile();
+    await userEvent.type(screen.getByLabelText(/Owner 1 email/), 'a@example.org');
+    await userEvent.click(screen.getByRole('button', { name: 'Add Owner' }));
+    await userEvent.type(screen.getByLabelText(/Owner 2 email/), 'bad');
+    await userEvent.click(screen.getByRole('button', { name: 'Add Owner' }));
+    await userEvent.type(screen.getByLabelText(/Owner 3 email/), 'c@example.org');
+    await next();
+    expect(screen.getByText('Enter a valid email address.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Owner 1' }));
+    expect(screen.queryByText('Enter a valid email address.')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Owner 2 email/)).toHaveValue('c@example.org');
+    expect(screen.getByLabelText(/Owner 2 email/)).not.toBeInvalid();
+    await next();
+    expect(screen.getByText('Enter a valid email address.')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Owner 1 email/)).toBeInvalid();
+  });
+
+  it('gives the icon-only Remove button a tooltip as well as a name', async () => {
+    renderScreen(<OnboardSociety />);
+    await fillProfile();
+    expect(screen.getByRole('button', { name: 'Remove Owner 1' })).toHaveAttribute('title', 'Remove Owner 1');
   });
 });
