@@ -12,6 +12,7 @@ import { FilterBar } from '@/components/ui/filter-bar';
 import { LinkButton } from '@/components/ui/link-button';
 import { Mono } from '@/components/ui/mono';
 import { Pagination } from '@/components/ui/pagination';
+import { BlockedSectionChips } from '@/features/blocks/blocked-section-chips';
 import { formatStamp } from '@/lib/format/date';
 import { useListControls } from '@/lib/hooks/use-list-controls';
 import { useUrlState } from '@/lib/hooks/use-url-state';
@@ -61,7 +62,16 @@ export function SocietiesList() {
       align: 'end',
       cell: (row) => <span className="tabular">{row.institutionCount}</span>,
     },
-    { key: 'status', header: 'Status', cell: (row) => <TenantStatusChip record={row} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (row) => (
+        <span className="flex flex-wrap gap-1.5">
+          <TenantStatusChip record={row} />
+          {row.blocked ? <BlockedSectionChips sections={['owners']} /> : null}
+        </span>
+      ),
+    },
     {
       key: 'updated',
       header: 'Updated',

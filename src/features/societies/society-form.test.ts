@@ -23,6 +23,7 @@ const society: Society = {
   status: 1,
   institutionCount: 2,
   version: 3,
+  blockedSections: [],
   createdBy: actor,
   createdAt: '2026-10-01T00:00:00.000Z',
   updatedBy: actor,

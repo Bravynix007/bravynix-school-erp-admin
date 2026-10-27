@@ -15,6 +15,7 @@ export const summary = (changes: Partial<SocietySummary> = {}): SocietySummary =
   name: 'Sri Vidya Educational Society',
   status: 1,
   institutionCount: 2,
+  blocked: false,
   ...stamps,
   ...changes,
 });
@@ -32,7 +33,8 @@ export const society = (changes: Partial<SocietyDetail> = {}): SocietyDetail => 
   status: 1,
   institutionCount: 1,
   version: 3,
-  institutions: [{ id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 1 }],
+  blockedSections: [],
+  institutions: [{ id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 1, blockedSections: [] }],
   owners: [{ id: 'o1', displayName: 'Asha Rao', email: 'asha@example.org', accountStatus: 1 }],
   ...stamps,
   ...changes,

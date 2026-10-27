@@ -1,0 +1,120 @@
+'use client';
+
+import { useState } from 'react';
+import { WriteError } from '@/components/shell/write-error';
+import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useToast } from '@/components/ui/toast';
+import { ReasonDialog } from '@/features/users/person-dialogs';
+import { useGuardedWrite } from '@/lib/hooks/use-one-at-a-time';
+import { BLOCK_EFFECT, SECTION_NOUN } from './section-copy';
+import type { BlockTarget } from './types';
+import { useBlockSection, useUnblockSection } from './use-blocks';
+
+type Dialog = 'block' | 'unblock';
+
+/**
+ * Blocks or unblocks one section of a Society or Institution (PLT-42, PLT-43; API design 10.4e). The label says which:
+ * "Block staff" or "Unblock staff", and `name` is the Society or Institution, so a row of buttons stays distinguishable.
+ * A section that is open cannot be blocked while `canBlock` is false (a deactivated Society or Institution).
+ */
+export function SectionBlockButton({
+  target,
+  name,
+  blocked,
+  canBlock = true,
+}: {
+  target: BlockTarget;
+  name: string;
+  blocked: boolean;
+  canBlock?: boolean;
+}) {
+  const toast = useToast();
+  const attempt = useGuardedWrite();
+  const block = useBlockSection();
+  const unblock = useUnblockSection();
+  const [dialog, setDialog] = useState<Dialog | null>(null);
+
+  if (!blocked && !canBlock) return null;
+
+  const noun = SECTION_NOUN[target.section];
+  const close = () => {
+    block.reset();
+    unblock.reset();
+    setDialog(null);
+  };
+
+  return (
+    <>
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-label={`${blocked ? 'Unblock' : 'Block'} ${noun} of ${name}`}
+        onClick={() => setDialog(blocked ? 'unblock' : 'block')}
+      >
+        {blocked ? 'Unblock' : 'Block'} {noun}
+      </Button>
+
+      {dialog === 'block' ? (
+        <ReasonDialog
+          title={`Block ${noun} of ${name}?`}
+          description={`${BLOCK_EFFECT[target.section]} Nothing is deleted. The block stays until you lift it.`}
+          submitLabel={`Block ${noun}`}
+          tone="danger"
+          write={{
+            pending: block.isPending,
+            error: block.error,
+            overrides: {
+              DUPLICATE: `The ${noun} of ${name} are already blocked.`,
+              INVALID_STATE: `${name} is deactivated, so nothing can be blocked in it.`,
+            },
+          }}
+          onClose={close}
+          onSubmit={(reason) =>
+            attempt(
+              (settled) =>
+                block.mutate(
+                  {
+                    section: target.section,
+                    societyId: target.societyId,
+                    ...(target.institutionId === null ? {} : { institutionId: target.institutionId }),
+                    reason,
+                  },
+                  settled,
+                ),
+              () => {
+                close();
+                toast.success(`${noun} of ${name} blocked`);
+              },
+            )
+          }
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={dialog === 'unblock'}
+        title={`Unblock ${noun} of ${name}?`}
+        consequence="They can work again on their next request."
+        confirmLabel={`Unblock ${noun}`}
+        loading={unblock.isPending}
+        onCancel={close}
+        onConfirm={() =>
+          attempt(
+            (settled) => unblock.mutate(target, settled),
+            () => {
+              close();
+              toast.success(`${noun} of ${name} unblocked`);
+            },
+          )
+        }
+      >
+        {unblock.isError ? (
+          <WriteError
+            error={unblock.error}
+            overrides={{ NOT_FOUND: `The ${noun} of ${name} are not blocked any more.` }}
+          />
+        ) : null}
+      </ConfirmDialog>
+    </>
+  );
+}
