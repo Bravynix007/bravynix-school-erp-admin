@@ -264,6 +264,21 @@ describe('Super Admins', () => {
     await waitFor(() => expect(api.removeSuperAdmin).toHaveBeenCalledWith('u2'));
   });
 
+  it('after a removal, lets go of the person in the URL and puts focus on the list, since their row is gone', async () => {
+    api.removeSuperAdmin.mockImplementation(() => {
+      api.superAdmins.mockResolvedValue([superAdmin()]);
+      return Promise.resolve({ id: 'u2', status: 0 });
+    });
+    renderScreen(<UsersPage />);
+    const sheet = await openSuperAdmin('Ravi Nair');
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Remove Super Admin' }));
+    const dialog = screen.getByRole('dialog', { name: /Remove Ravi Nair as Super Admin/ });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Remove Super Admin' }));
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Super Admins' })).toHaveFocus());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(window.location.search).not.toContain('person=');
+  });
+
   it('shows the error banner with a retry when the list cannot load', async () => {
     api.superAdmins.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'x', 'req-8'));
     renderScreen(<UsersPage />);
@@ -347,6 +362,24 @@ describe('Society Owners', () => {
     window.history.replaceState(null, '', '/users/?tab=owners&person=o1&society=s2');
     renderScreen(<UsersPage />);
     expect(await screen.findByRole('link', { name: 'Navodaya Society' })).toBeInTheDocument();
+  });
+
+  it('closes for good when an email change takes the Owner out of the search', async () => {
+    window.history.replaceState(null, '', '/users/?tab=owners&q=asha&person=o1&society=s1');
+    api.owners.mockImplementation(({ q }: { q?: string }) =>
+      Promise.resolve(ownerPage(q === 'asha' && api.changeEmail.mock.calls.length > 0 ? [] : [owner()])),
+    );
+    api.changeEmail.mockResolvedValue(owner({ email: 'new@example.org', version: 3 }));
+    renderScreen(<UsersPage />);
+    const sheet = await screen.findByRole('dialog', { name: 'Asha Rao' });
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Change email' }));
+    const dialog = screen.getByRole('dialog', { name: 'Change email' });
+    await userEvent.clear(within(dialog).getByLabelText(/New email/));
+    await userEvent.type(within(dialog).getByLabelText(/New email/), 'new@example.org');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Change email' }));
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Society Owners' })).toHaveFocus());
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(window.location.search).not.toContain('person=');
   });
 
   it('opens nothing for a person who is not in the list, such as a stale link', async () => {

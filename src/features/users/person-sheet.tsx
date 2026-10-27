@@ -34,10 +34,13 @@ type Action = 'block' | 'unblock' | 'email' | 'unlock' | 'reset' | 'remove';
 export function PersonSheet({
   person,
   onClose,
+  onRemoved = onClose,
   reload,
 }: {
   person: Person;
   onClose: () => void;
+  /** After Remove Super Admin: the sheet closes, and their row, where focus would return, is gone. */
+  onRemoved?: () => void;
   reload: () => void;
 }) {
   const toast = useToast();
@@ -250,7 +253,7 @@ export function PersonSheet({
               (settled) => remove.mutate(person.id, settled),
               () => {
                 finish(`${person.displayName} removed`);
-                onClose();
+                onRemoved();
               },
             )
           }

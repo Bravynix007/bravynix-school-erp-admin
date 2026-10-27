@@ -11,6 +11,7 @@ import { formatInstant } from '@/lib/format/date';
 import { useListControls } from '@/lib/hooks/use-list-controls';
 import { PersonSheet } from './person-sheet';
 import type { SocietyOwner } from './types';
+import { useLostSelection } from './use-lost-selection';
 import { useOwnerList } from './use-users';
 
 const PAGE_SIZE = 20;
@@ -71,11 +72,23 @@ export function SocietyOwnersTab({
   const selected = list.data?.items.find(
     (row) => row.id === selection?.personId && row.society.id === selection.societyId,
   );
+  const region = useLostSelection({
+    selected: selection ? `${selection.personId}:${selection.societyId}` : '',
+    found: selected !== undefined,
+    settled: list.isSuccess && !list.isFetching && !list.isPlaceholderData,
+    clear: () => onSelect(''),
+  });
   const total = list.data?.meta.totalItems;
   const filtered = controls.q !== '';
 
   return (
-    <div className="flex flex-col gap-4 pt-4">
+    <div
+      ref={region}
+      role="group"
+      aria-label="Society Owners"
+      tabIndex={-1}
+      className="flex flex-col gap-4 pt-4"
+    >
       <FilterBar
         searchLabel="Search Owners"
         searchPlaceholder="Search by name or email"

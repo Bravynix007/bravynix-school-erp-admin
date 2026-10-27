@@ -14,6 +14,7 @@ import { useGuardedWrite } from '@/lib/hooks/use-one-at-a-time';
 import { AddPersonDialog } from './person-dialogs';
 import { PersonSheet } from './person-sheet';
 import { MAX_SUPER_ADMINS, type SuperAdmin } from './types';
+import { useLostSelection } from './use-lost-selection';
 import { useAddSuperAdmin, useSuperAdmins } from './use-users';
 
 const columns: Column<SuperAdmin>[] = [
@@ -56,6 +57,14 @@ export function SuperAdminsTab({
   const toast = useToast();
   const [adding, setAdding] = useState(false);
   const attempt = useGuardedWrite();
+  const rows = list.data ?? [];
+  const selected = rows.find((row) => row.id === selectedId);
+  const region = useLostSelection({
+    selected: selectedId,
+    found: selected !== undefined,
+    settled: list.isSuccess && !list.isFetching,
+    clear: () => onSelect(''),
+  });
 
   if (list.isError) {
     return (
@@ -66,12 +75,16 @@ export function SuperAdminsTab({
       />
     );
   }
-  const rows = list.data ?? [];
-  const selected = rows.find((row) => row.id === selectedId);
   const full = rows.length >= MAX_SUPER_ADMINS;
 
   return (
-    <div className="flex flex-col gap-4 pt-4">
+    <div
+      ref={region}
+      role="group"
+      aria-label="Super Admins"
+      tabIndex={-1}
+      className="flex flex-col gap-4 pt-4"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SeatMeter
           max={MAX_SUPER_ADMINS}
@@ -129,7 +142,15 @@ export function SuperAdminsTab({
         />
       ) : null}
       {selected ? (
-        <PersonSheet person={selected} onClose={() => onSelect('')} reload={() => void list.refetch()} />
+        <PersonSheet
+          person={selected}
+          onClose={() => onSelect('')}
+          onRemoved={() => {
+            onSelect('');
+            window.setTimeout(() => region.current?.focus(), 0);
+          }}
+          reload={() => void list.refetch()}
+        />
       ) : null}
     </div>
   );
