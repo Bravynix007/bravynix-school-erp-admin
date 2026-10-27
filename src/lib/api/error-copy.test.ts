@@ -10,6 +10,12 @@ describe('apiErrorMessage', () => {
     expect(apiErrorMessage(error('VERSION_CONFLICT'))).toMatch(/Someone changed this record/);
   });
 
+  it('words the account-lock refusals, so the operator knows the next step', () => {
+    expect(apiErrorMessage(error('NOT_LOCKED'))).toMatch(/nothing to unlock/);
+    expect(apiErrorMessage(error('AUTHENTICATOR_LOCKED'))).toMatch(/Unlock their sign-in first/);
+    expect(apiErrorMessage(error('MFA_NOT_ENROLLED'))).toMatch(/nothing to reset/);
+  });
+
   it('lets a screen word a code its own way', () => {
     expect(apiErrorMessage(error('INVALID_STATE'), { INVALID_STATE: 'Already paused.' })).toBe(
       'Already paused.',

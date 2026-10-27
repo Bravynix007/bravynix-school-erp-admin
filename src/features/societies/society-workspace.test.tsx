@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type * as SocietiesApiModule from './societies-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -16,7 +16,12 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-const api = vi.hoisted(() => ({ get: vi.fn(), deactivate: vi.fn() }));
+const api = vi.hoisted(() => ({
+  get: vi.fn(),
+  deactivate: vi.fn(),
+  addOwner: vi.fn(),
+  removeOwner: vi.fn(),
+}));
 vi.mock('./societies-api', async (original) => ({
   ...(await original<typeof SocietiesApiModule>()),
   societiesApi: api,
@@ -121,6 +126,76 @@ describe('SocietyWorkspace', () => {
     id = null;
     renderScreen(<SocietyWorkspace />);
     expect(screen.getByText(/no longer exists/)).toBeInTheDocument();
+  });
+
+  it('adds an Owner from the Owners tab and shows the seat limit when the API refuses', async () => {
+    api.get.mockResolvedValue(society());
+    api.addOwner.mockRejectedValueOnce(new ApiError(409, 'SEAT_LIMIT_REACHED', 'x', 'req-5'));
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: /Owners/ }));
+    await userEvent.click(screen.getAllByRole('button', { name: 'Add an Owner' })[0]!);
+    const dialog = screen.getByRole('dialog', { name: 'Add Owner' });
+    await userEvent.type(within(dialog).getByLabelText(/Email/), 'Meena@Example.org');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add Owner' }));
+    expect(
+      await within(dialog).findByText('This Society already has 3 Owners. Remove one first.'),
+    ).toBeInTheDocument();
+    expect(api.addOwner).toHaveBeenCalledWith('s1', { email: 'meena@example.org' });
+  });
+
+  it('removes an Owner after a confirmation, and explains the last-Owner rule', async () => {
+    api.get.mockResolvedValue(society());
+    api.removeOwner.mockRejectedValue(new ApiError(409, 'LAST_OWNER', 'x', 'req-6'));
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: /Owners/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Asha Rao' }));
+    const dialog = screen.getByRole('dialog', { name: /Remove Asha Rao as Owner/ });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Remove Owner' }));
+    expect(api.removeOwner).toHaveBeenCalledWith('s1', 'o1');
+    expect(await within(dialog).findByText(/must keep at least one Owner/)).toBeInTheDocument();
+  });
+
+  it('moves focus to the Owners group once the removed Owner’s own button is gone', async () => {
+    api.get.mockResolvedValue(society());
+    api.removeOwner.mockResolvedValue({ id: 'o1', status: 0 });
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: /Owners/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Asha Rao' }));
+    const dialog = screen.getByRole('dialog', { name: /Remove Asha Rao as Owner/ });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Remove Owner' }));
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Owners' })).toHaveFocus());
+  });
+
+  it('sends a removal once when the button is clicked twice before the dialog shows it is busy', async () => {
+    api.get.mockResolvedValue(society());
+    api.removeOwner.mockImplementation(() => new Promise(() => {}));
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: /Owners/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Asha Rao' }));
+    const confirm = within(screen.getByRole('dialog', { name: /Remove Asha Rao as Owner/ })).getByRole(
+      'button',
+      {
+        name: 'Remove Owner',
+      },
+    );
+    act(() => {
+      confirm.click();
+      confirm.click();
+    });
+    await waitFor(() => expect(api.removeOwner).toHaveBeenCalledTimes(1));
+  });
+
+  it('offers no Owner changes on a deactivated Society', async () => {
+    api.get.mockResolvedValue(society({ status: 0 }));
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: /Owners/ }));
+    expect(screen.queryByRole('button', { name: 'Add an Owner' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove Asha Rao' })).not.toBeInTheDocument();
   });
 
   it('treats an empty ?id= as no ID, and does not fetch the list as if it were one Society', () => {

@@ -1,3 +1,4 @@
+import { emailProblem, nameProblem, personBody } from '@/features/users/person-form';
 import type { NewOwner } from './types';
 
 export const MAX_OWNERS = 3;
@@ -19,26 +20,16 @@ export function ownerErrors(rows: readonly OwnerRow[]): Record<string, string> {
   const seen = new Set<string>();
   rows.forEach((row, index) => {
     const email = row.email.trim().toLowerCase();
-    if (email === '') errors[`owners[${index}].email`] = 'Enter the Owner’s email.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      errors[`owners[${index}].email`] = 'Enter a valid email address.';
+    const problem = emailProblem(email, 'the Owner’s');
+    if (problem) errors[`owners[${index}].email`] = problem;
     else if (seen.has(email)) errors[`owners[${index}].email`] = 'This email is already listed above.';
     seen.add(email);
-    if (row.firstName.trim().length > 100)
-      errors[`owners[${index}].firstName`] = 'Use at most 100 characters.';
-    if (row.lastName.trim().length > 100) errors[`owners[${index}].lastName`] = 'Use at most 100 characters.';
+    const first = nameProblem(row.firstName);
+    if (first) errors[`owners[${index}].firstName`] = first;
+    const last = nameProblem(row.lastName);
+    if (last) errors[`owners[${index}].lastName`] = last;
   });
   return errors;
 }
 
-export function ownersBody(rows: readonly OwnerRow[]): NewOwner[] {
-  return rows.map((row) => {
-    const firstName = row.firstName.trim();
-    const lastName = row.lastName.trim();
-    return {
-      email: row.email.trim().toLowerCase(),
-      ...(firstName ? { firstName } : {}),
-      ...(lastName ? { lastName } : {}),
-    };
-  });
-}
+export const ownersBody = (rows: readonly OwnerRow[]): NewOwner[] => rows.map(personBody);

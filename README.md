@@ -42,7 +42,8 @@ runs all three.
 
 `npm run test:e2e:live` drives the built console in Chromium against a running backend: first
 sign-in with authenticator setup, a wrong authenticator code, the refresh cookie surviving a
-reload, log out, and "Start again" after five wrong codes. It exists because the other e2e specs
+reload, log out, and "Start again" after five wrong codes, then the Societies screens (onboard, find,
+edit, deactivate) and the Users page (Owner seats, block, change email, unlock). It exists because the other e2e specs
 mock the API, so it is what proves the two repositories agree. Run it before changing anything
 in `src/lib/auth`, `src/lib/api` or `src/features/auth`; CI does not run it.
 
@@ -54,8 +55,9 @@ npm run db:migrate && npm run db:seed          # a new local database, two-world
 PORT=3000 CORS_ORIGINS=http://localhost:3001 OTP_DEV_ECHO=true EMAIL_DRIVER=memory npm start
 ```
 
-Then here: `npm run build:local && npm run test:e2e:live`. The run takes about a minute, because
-the API makes a second code request for one email wait out its 60-second resend gap.
+Then here: `npm run build:local && npm run test:e2e:live`. The QA file `e2e-live/qa-users.spec.ts` is skipped unless `LIVE_DB` names the database (it runs `psql` as `postgres`, on `PGHOST` when set, and changes data: reseed before a rerun). The run takes about two minutes, because
+the API makes a second code request for one email wait out its 60-second resend gap, and it allows three
+code requests per email in 15 minutes, so the specs share one signed-in session per Super Admin.
 
 ## Configuration
 

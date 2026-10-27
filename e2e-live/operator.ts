@@ -56,7 +56,7 @@ export async function signInUntilAuthenticator(
 }
 
 /** Signs a Super Admin in all the way to the dashboard, enrolling the authenticator the first time. */
-export async function signInOperator(
+async function signInOperator(
   browser: Browser,
   email: string,
 ): Promise<{ context: BrowserContext; page: Page }> {
@@ -67,6 +67,22 @@ export async function signInOperator(
   await page.getByLabel('Digit 1 of 6').pressSequentially(authenticatorCode(secret));
   await expect(page).toHaveURL(/\/dashboard\/$/);
   return { context, page };
+}
+
+const signedIn = new Map<string, Promise<{ context: BrowserContext; page: Page }>>();
+
+/**
+ * The one signed-in session of a Super Admin for the whole run. The API takes at most three code
+ * requests per email in 15 minutes (API design 10.1), so specs that need the same operator share it
+ * instead of signing in again. The browser closes it when the run ends.
+ */
+export function sharedOperator(browser: Browser, email: string) {
+  let session = signedIn.get(email);
+  if (!session) {
+    session = signInOperator(browser, email);
+    signedIn.set(email, session);
+  }
+  return session;
 }
 
 export { authenticatorCode };
