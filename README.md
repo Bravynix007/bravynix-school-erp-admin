@@ -55,7 +55,7 @@ npm run db:migrate && npm run db:seed          # a new local database, two-world
 PORT=3000 CORS_ORIGINS=http://localhost:3001 OTP_DEV_ECHO=true EMAIL_DRIVER=memory npm start
 ```
 
-Then here: `npm run build:local && npm run test:e2e:live`. The run takes about two minutes, because
+Then here: `npm run build:local && npm run test:e2e:live`. The QA file `e2e-live/qa-users.spec.ts` is skipped unless `LIVE_DB` names the database (it runs `psql` as `postgres`, on `PGHOST` when set, and changes data: reseed before a rerun). The run takes about two minutes, because
 the API makes a second code request for one email wait out its 60-second resend gap, and it allows three
 code requests per email in 15 minutes, so the specs share one signed-in session per Super Admin.
 

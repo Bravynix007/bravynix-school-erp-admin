@@ -387,5 +387,8 @@ describe('Society Owners', () => {
     renderScreen(<UsersPage />);
     await screen.findByText('Ananya Rao');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // A link that was never shown is not "lost": the URL keeps it and focus is not moved to the list.
+    expect(window.location.search).toContain('person=gone');
+    expect(document.body).toHaveFocus();
   });
 });

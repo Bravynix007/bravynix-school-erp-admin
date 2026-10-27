@@ -6,9 +6,17 @@ import { API, knownSecret, sharedOperator } from './operator';
  * QA attacks on C3 against the real API (fresh database). Two Super Admins act
  * at once for the version races. `sql` opens the code-request gates between
  * sign-ins, sets locks, and reads rows as the database owner.
+ *
+ * It changes data directly (it deletes an authenticator and moves code times),
+ * so it runs only when `LIVE_DB` names the database the backend uses, and the
+ * database needs a reseed before another run. It calls `psql` as the `postgres`
+ * user, on `PGHOST` when that is set.
  */
+const LIVE_DB = process.env.LIVE_DB;
+
 function sql(statement: string): string {
-  return execFileSync('su', ['postgres', '-c', `psql -qtA -d school_erp_live -c "${statement}"`])
+  const host = process.env.PGHOST ? `PGHOST=${process.env.PGHOST} ` : '';
+  return execFileSync('su', ['postgres', '-c', `${host}psql -qtA -d ${LIVE_DB} -c "${statement}"`])
     .toString()
     .trim();
 }
@@ -55,6 +63,7 @@ const ownerRow = (page: Page, text: string) =>
   page.getByRole('row').filter({ hasText: text }).getByRole('button').first();
 
 test.describe('QA: C3 Users page against the real API', () => {
+  test.skip(!LIVE_DB, 'set LIVE_DB to the backend database to run this file');
   test.describe.configure({ timeout: 150_000 });
   let a: Page;
   let b: Page;
