@@ -20,6 +20,17 @@ const variants: Record<Variant, string> = {
   danger: 'border border-transparent bg-danger text-on-primary hover:brightness-95',
 };
 
+/** The look of a button, for a link that navigates and must look like one (DESIGN.md 12). */
+export function buttonClasses(variant: Variant = 'primary', size: 'md' | 'sm' = 'md'): string {
+  return cn(
+    'inline-flex items-center justify-center gap-2 rounded-md text-label font-medium whitespace-nowrap transition-colors',
+    size === 'md' ? 'h-10 px-4' : 'h-9 px-3',
+    variants[variant],
+    'disabled:cursor-not-allowed disabled:border-transparent disabled:bg-sunken disabled:text-disabled',
+    'aria-disabled:cursor-not-allowed aria-disabled:border-transparent aria-disabled:bg-sunken aria-disabled:text-disabled',
+  );
+}
+
 /** Buttons per DESIGN.md 12. One primary per view; danger only inside confirm dialogs. */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
@@ -46,14 +57,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       aria-busy={loading || undefined}
       // A busy submit button must not submit again: cancel the click's default action too.
       onClick={inert ? (event) => event.preventDefault() : onClick}
-      className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-md text-label font-medium whitespace-nowrap transition-colors',
-        size === 'md' ? 'h-10 px-4' : 'h-9 px-3',
-        variants[variant],
-        'disabled:cursor-not-allowed disabled:border-transparent disabled:bg-sunken disabled:text-disabled',
-        'aria-disabled:cursor-not-allowed aria-disabled:border-transparent aria-disabled:bg-sunken aria-disabled:text-disabled',
-        className,
-      )}
+      className={cn(buttonClasses(variant, size), className)}
       {...rest}
       aria-disabled={inert || undefined}
     >

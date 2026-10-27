@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { test as base, type Page, type Route } from '@playwright/test';
 
 export const API = 'http://localhost:3000/v1';
@@ -49,3 +50,27 @@ export const test = base.extend<{ signedOut: void }>({
 });
 
 export { expect } from '@playwright/test';
+
+/** The operator already has a session: the page's first refresh succeeds. */
+export async function signIn(page: Page) {
+  await page.unroute(`${API}/auth/refresh`);
+  await mockApi(page, 'auth/refresh', () => envelope({ accessToken: 'access-1' }));
+}
+
+const axeSource = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
+
+/** WCAG 2.2 AA violations a scanner can find on the page as it is now. */
+export async function axeViolations(page: Page) {
+  await page.evaluate(axeSource);
+  return page.evaluate(async () => {
+    // @ts-expect-error axe is injected above
+    const result = await window.axe.run(document, {
+      runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] },
+    });
+    return result.violations.map((v: { id: string; help: string; nodes: { target: unknown[] }[] }) => ({
+      id: v.id,
+      help: v.help,
+      targets: v.nodes.map((n) => n.target.join(' ')),
+    }));
+  });
+}
