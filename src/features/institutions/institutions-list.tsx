@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRef } from 'react';
 import { LoadFailed } from '@/components/shell/load-failed';
 import { PageHeader } from '@/components/shell/page-header';
 import { TenantStatusChip } from '@/components/shell/tenant-status-chip';
@@ -37,6 +38,8 @@ const BLOCKED_OPTIONS = [
  */
 export function InstitutionsList() {
   const controls = useListControls('name');
+  // Where focus goes when the row of a button the operator used leaves a filtered list (DESIGN.md 15).
+  const region = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useUrlState('status', '', (value) =>
     STATUS_OPTIONS.some((option) => option.value === value),
   );
@@ -105,6 +108,7 @@ export function InstitutionsList() {
               name={row.name}
               blocked={row.blockedSections.includes(section)}
               canBlock={row.status === 1}
+              onTriggerGone={() => region.current?.focus()}
             />
           ))}
         </span>
@@ -119,7 +123,7 @@ export function InstitutionsList() {
   return (
     <>
       <PageHeader title="Institutions" meta={total === undefined ? undefined : `${total} ${noun}`} />
-      <div className="flex flex-col gap-4">
+      <div ref={region} role="group" aria-label="Institutions" tabIndex={-1} className="flex flex-col gap-4">
         <FilterBar
           searchLabel="Search Institutions"
           searchPlaceholder="Search by name or code"

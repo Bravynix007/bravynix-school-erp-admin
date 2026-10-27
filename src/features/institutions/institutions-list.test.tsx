@@ -120,6 +120,25 @@ describe('InstitutionsList', () => {
     );
   });
 
+  it('moves focus to the list when the unblock takes the row out of a filtered list', async () => {
+    window.history.replaceState(null, '', '/institutions/?blocked=blocked');
+    api.list
+      .mockResolvedValueOnce(page([institution({ blockedSections: ['students'] })]))
+      .mockResolvedValue(page([]));
+    blocks.unblock.mockResolvedValue({ id: 'b1', status: 0 });
+    renderScreen(<InstitutionsList />);
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Unblock students of Sri Vidya High School' }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Unblock students' }),
+    );
+
+    expect(await screen.findByText('No Institutions match')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Institutions' })).toHaveFocus());
+  });
+
   it('shows the error with its retry when the list cannot load', async () => {
     api.list.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'x', 'req-5'));
     renderScreen(<InstitutionsList />);

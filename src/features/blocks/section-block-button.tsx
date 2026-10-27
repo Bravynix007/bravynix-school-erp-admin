@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { WriteError } from '@/components/shell/write-error';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -23,12 +23,19 @@ export function SectionBlockButton({
   name,
   blocked,
   canBlock = true,
+  onTriggerGone,
 }: {
   target: BlockTarget;
   name: string;
   blocked: boolean;
   canBlock?: boolean;
+  /**
+   * Called after a successful write when this button is no longer on the page: a filtered list drops the row once
+   * its last blocked section is lifted, and with it the button focus would return to (DESIGN.md 15).
+   */
+  onTriggerGone?: () => void;
 }) {
+  const trigger = useRef<HTMLButtonElement>(null);
   const toast = useToast();
   const attempt = useGuardedWrite();
   const block = useBlockSection();
@@ -43,10 +50,19 @@ export function SectionBlockButton({
     unblock.reset();
     setDialog(null);
   };
+  const finish = (message: string) => {
+    close();
+    toast.success(message);
+    // The refetch has already run, so a dropped row has already unmounted this button.
+    window.setTimeout(() => {
+      if (!trigger.current?.isConnected) onTriggerGone?.();
+    }, 0);
+  };
 
   return (
     <>
       <Button
+        ref={trigger}
         variant="secondary"
         size="sm"
         aria-label={`${blocked ? 'Unblock' : 'Block'} ${noun} of ${name}`}
@@ -82,10 +98,7 @@ export function SectionBlockButton({
                   },
                   settled,
                 ),
-              () => {
-                close();
-                toast.success(`${noun} of ${name} blocked`);
-              },
+              () => finish(`${noun} of ${name} blocked`),
             )
           }
         />
@@ -101,10 +114,7 @@ export function SectionBlockButton({
         onConfirm={() =>
           attempt(
             (settled) => unblock.mutate(target, settled),
-            () => {
-              close();
-              toast.success(`${noun} of ${name} unblocked`);
-            },
+            () => finish(`${noun} of ${name} unblocked`),
           )
         }
       >
