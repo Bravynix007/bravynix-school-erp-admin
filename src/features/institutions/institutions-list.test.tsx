@@ -139,6 +139,66 @@ describe('InstitutionsList', () => {
     await waitFor(() => expect(screen.getByRole('group', { name: 'Institutions' })).toHaveFocus());
   });
 
+  it('offers only Unblock on a deactivated Institution', async () => {
+    api.list.mockResolvedValue(page([institution({ status: 0, blockedSections: ['staff'] })]));
+    renderScreen(<InstitutionsList />);
+    expect(
+      await screen.findByRole('button', { name: 'Unblock staff of Sri Vidya High School' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Block / })).not.toBeInTheDocument();
+  });
+
+  it('reads the list again after a refused write, and keeps the refusal on screen when the row can no longer be blocked', async () => {
+    api.list
+      .mockResolvedValueOnce(page([institution()]))
+      .mockResolvedValue(page([institution({ status: 0 })]));
+    blocks.block.mockRejectedValue(new ApiError(409, 'INVALID_STATE', 'x', 'req-6'));
+    renderScreen(<InstitutionsList />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Block students of Sri Vidya High School' }),
+    );
+    await userEvent.type(screen.getByLabelText(/Reason/), 'Fee unpaid');
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Block students' }));
+    await waitFor(() => expect(api.list.mock.calls.length).toBeGreaterThan(1));
+    // The button is gone from the refreshed row; the dialog and its explanation stay.
+    expect(
+      await within(screen.getByRole('dialog')).findByText(
+        'Sri Vidya High School or its Society is deactivated, so nothing can be blocked in it.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Block staff of Sri Vidya High School' })).toBeNull();
+  });
+
+  it('keeps the refusal on screen when the block was lifted elsewhere and the refresh drops the button', async () => {
+    api.list
+      .mockResolvedValueOnce(page([institution({ status: 0, blockedSections: ['students'] })]))
+      .mockResolvedValue(page([institution({ status: 0 })]));
+    blocks.unblock.mockRejectedValue(new ApiError(404, 'NOT_FOUND', 'x', 'req-3'));
+    renderScreen(<InstitutionsList />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Unblock students of Sri Vidya High School' }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Unblock students' }),
+    );
+    expect(await within(screen.getByRole('dialog')).findByText(/not blocked any more/)).toBeInTheDocument();
+  });
+
+  it('does not pull focus to the list when the row, and so its button, is still there after a write', async () => {
+    api.list.mockResolvedValue(page([institution()]));
+    blocks.block.mockResolvedValue({});
+    renderScreen(<InstitutionsList />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Block staff of Sri Vidya High School' }),
+    );
+    await userEvent.type(screen.getByLabelText(/Reason/), 'Fee unpaid');
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Block staff' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    // Let the check that looks for a vanished button run, then see that it did not take focus.
+    await new Promise((resolve) => window.setTimeout(resolve, 10));
+    expect(screen.getByRole('group', { name: 'Institutions' })).not.toHaveFocus();
+  });
+
   it('shows the error with its retry when the list cannot load', async () => {
     api.list.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'x', 'req-5'));
     renderScreen(<InstitutionsList />);

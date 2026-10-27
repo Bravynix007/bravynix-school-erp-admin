@@ -1,10 +1,11 @@
 'use client';
 
+import { useRef } from 'react';
 import { Mono } from '@/components/ui/mono';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { BlockedSectionChips } from '@/features/blocks/blocked-section-chips';
 import { SectionBlockButton } from '@/features/blocks/section-block-button';
-import { INSTITUTION_SECTIONS, SECTION_NOUN } from '@/features/blocks/section-copy';
+import { INSTITUTION_SECTIONS, sectionTitle } from '@/features/blocks/section-copy';
 import type { AccessBlock, BlockSection } from '@/features/blocks/types';
 import { useSocietyBlocks } from '@/features/blocks/use-blocks';
 import { formatStamp } from '@/lib/format/date';
@@ -18,11 +19,14 @@ import type { SocietyDetail } from './types';
 export function SocietyAccess({ society }: { society: SocietyDetail }) {
   const blocks = useSocietyBlocks(society.id);
   const deactivated = society.status === 0;
+  // Where focus goes when the button an operator used leaves the page, e.g. a lifted block on a deactivated Institution.
+  const region = useRef<HTMLDivElement>(null);
+  const focusRegion = () => region.current?.focus();
   const reasonOf = (section: BlockSection, institutionId: string | null): AccessBlock | undefined =>
     blocks.data?.items.find((block) => block.section === section && block.institutionId === institutionId);
 
   return (
-    <div role="group" aria-label="Access" className="flex flex-col gap-4 pt-4">
+    <div ref={region} role="group" aria-label="Access" tabIndex={-1} className="flex flex-col gap-4 pt-4">
       <p className="text-body text-ink-secondary">
         A block stops one group of people. Nothing is deleted and there is no expiry: it stays until you
         unblock it. The Owners of the Society see what is blocked and the reason.
@@ -41,6 +45,7 @@ export function SocietyAccess({ society }: { society: SocietyDetail }) {
             blocked={society.blockedSections.includes('owners')}
             canBlock={!deactivated}
             block={reasonOf('owners', null)}
+            onTriggerGone={focusRegion}
           />
         </li>
         {society.institutions.map((institution) => (
@@ -51,7 +56,7 @@ export function SocietyAccess({ society }: { society: SocietyDetail }) {
             {INSTITUTION_SECTIONS.map((section) => (
               <SectionRow
                 key={section}
-                title={`${SECTION_NOUN[section].charAt(0).toUpperCase()}${SECTION_NOUN[section].slice(1)}`}
+                title={sectionTitle(section)}
                 section={section}
                 societyId={society.id}
                 institutionId={institution.id}
@@ -59,6 +64,7 @@ export function SocietyAccess({ society }: { society: SocietyDetail }) {
                 blocked={institution.blockedSections.includes(section)}
                 canBlock={!deactivated && institution.status === 1}
                 block={reasonOf(section, institution.id)}
+                onTriggerGone={focusRegion}
               />
             ))}
           </li>
@@ -77,6 +83,7 @@ function SectionRow({
   blocked,
   canBlock,
   block,
+  onTriggerGone,
 }: {
   title: string;
   section: BlockSection;
@@ -86,6 +93,7 @@ function SectionRow({
   blocked: boolean;
   canBlock: boolean;
   block: AccessBlock | undefined;
+  onTriggerGone: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -105,6 +113,7 @@ function SectionRow({
         name={name}
         blocked={blocked}
         canBlock={canBlock}
+        onTriggerGone={onTriggerGone}
       />
     </div>
   );

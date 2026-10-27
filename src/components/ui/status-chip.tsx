@@ -13,7 +13,7 @@ const tones: Record<StatusTone, string> = {
 
 /**
  * State is a word plus a colour plus a shape (DESIGN.md 3): never colour
- * alone. Pass an icon to replace the dot, e.g. pause for Paused.
+ * alone. Pass an icon to replace the dot, e.g. a lock for a blocked section.
  */
 export function StatusChip({
   tone,
@@ -42,7 +42,7 @@ export function StatusChip({
 
 /** The fixed mapping from DESIGN.md 5, so the same state looks the same everywhere. */
 export const statusTone = {
-  tenant: { Active: 'success', Paused: 'warning', Inactive: 'neutral' },
+  tenant: { Active: 'success', Inactive: 'neutral' },
   account: { Pending: 'info', Active: 'success', Blocked: 'error' },
   due: { Due: 'warning', Paid: 'success', Cancelled: 'neutral' },
   aiReport: { New: 'info', 'In review': 'warning', Resolved: 'success' },

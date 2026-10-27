@@ -124,7 +124,7 @@ test('with reduced motion the loading bars hold still', async ({ page }) => {
 
 test('no axe violations once a row is selected and a filter is applied', async ({ page }) => {
   await signedInGallery(page);
-  await page.getByRole('combobox', { name: 'Status' }).selectOption('Paused');
+  await page.getByRole('combobox', { name: 'Status' }).selectOption('Inactive');
   await page.getByRole('button', { name: /^Lakeview Academy 2 INS-002$/ }).click();
   await expect(page.locator('tr[aria-current="true"]')).toHaveCount(1);
   expect(await violations(page)).toEqual([]);

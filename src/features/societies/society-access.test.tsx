@@ -72,7 +72,7 @@ describe('SocietyAccess', () => {
       institutionId: 'i1',
       reason: 'Annual fee unpaid',
     });
-    expect(await screen.findByText('staff of Sri Vidya High School blocked')).toBeInTheDocument();
+    expect(await screen.findByText('Staff of Sri Vidya High School blocked')).toBeInTheDocument();
   });
 
   it('blocks the Owners without an Institution', async () => {
@@ -124,7 +124,7 @@ describe('SocietyAccess', () => {
     expect(within(dialog).getByText(/work again on their next request/)).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Unblock staff' }));
     expect(api.unblock).toHaveBeenCalledWith({ section: 'staff', societyId: 's1', institutionId: 'i1' });
-    expect(await screen.findByText('staff of Sri Vidya High School unblocked')).toBeInTheDocument();
+    expect(await screen.findByText('Staff of Sri Vidya High School unblocked')).toBeInTheDocument();
   });
 
   it('explains an unblock of a section that someone else already unblocked', async () => {
@@ -158,6 +158,48 @@ describe('SocietyAccess', () => {
     expect(
       screen.getByRole('button', { name: 'Unblock staff of Sri Vidya High School' }),
     ).toBeInTheDocument();
+  });
+
+  it('offers no block on an active Institution of a deactivated Society', async () => {
+    renderScreen(<SocietyAccess society={society({ status: 0, institutions: [institution([], 1)] })} />);
+    await screen.findByText('Owners of this Society');
+    expect(screen.queryByRole('button', { name: /^Block / })).not.toBeInTheDocument();
+  });
+
+  it('shows each Institution its own reason, not another one’s for the same section', async () => {
+    api.list.mockResolvedValue(
+      page([
+        block({ id: 'b1', institutionId: 'i1', reason: 'Fee unpaid at the High School' }),
+        block({ id: 'b2', institutionId: 'i2', reason: 'Audit pending at the Primary' }),
+      ]),
+    );
+    renderScreen(
+      <SocietyAccess
+        society={society({
+          institutions: [
+            institution(['staff']),
+            { id: 'i2', code: 'SVPS', name: 'Sri Vidya Primary', status: 1, blockedSections: ['staff'] },
+          ],
+        })}
+      />,
+    );
+    const high = (await screen.findByText(/Fee unpaid at the High School/)).closest('li')!;
+    expect(within(high).queryByText(/Audit pending/)).not.toBeInTheDocument();
+    const primary = screen.getByText(/Audit pending at the Primary/).closest('li')!;
+    expect(within(primary).queryByText(/Fee unpaid/)).not.toBeInTheDocument();
+  });
+
+  it('shows a refusal in the dialog and not the one before it, after the dialog is reopened', async () => {
+    api.block.mockRejectedValue(new ApiError(409, 'DUPLICATE', 'x', 'req-9'));
+    renderScreen(<SocietyAccess society={society()} />);
+    const open = () => screen.findByRole('button', { name: 'Block staff of Sri Vidya High School' });
+    await userEvent.click(await open());
+    await userEvent.type(screen.getByLabelText(/Reason/), 'Fee');
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Block staff' }));
+    await within(screen.getByRole('dialog')).findByText(/already blocked/);
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+    await userEvent.click(await open());
+    expect(within(screen.getByRole('dialog')).queryByText(/already blocked/)).not.toBeInTheDocument();
   });
 
   it('keeps the buttons when the reasons cannot be loaded', async () => {

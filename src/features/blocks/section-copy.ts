@@ -20,5 +20,8 @@ export const BLOCK_EFFECT: Record<BlockSection, string> = {
     'Parents lose access to the children of this Institution. Its Owners and staff are not affected. The block is recorded now and starts to stop parents once they can sign in, in the People release.',
 };
 
-export const sectionChipLabel = (section: BlockSection) =>
-  `${SECTION_NOUN[section].charAt(0).toUpperCase()}${SECTION_NOUN[section].slice(1)} blocked`;
+/** The section's noun at the start of a sentence, a title or a chip: "Staff". */
+export const sectionTitle = (section: BlockSection) =>
+  `${SECTION_NOUN[section].charAt(0).toUpperCase()}${SECTION_NOUN[section].slice(1)}`;
+
+export const sectionChipLabel = (section: BlockSection) => `${sectionTitle(section)} blocked`;

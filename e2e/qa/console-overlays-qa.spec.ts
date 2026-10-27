@@ -31,7 +31,7 @@ async function violations(page: Page) {
 }
 
 const overlays = [
-  { opener: 'Open confirm dialog', name: 'Pause this Institution?' },
+  { opener: 'Open confirm dialog', name: 'Deactivate this Institution?' },
   { opener: 'Open danger dialog', name: 'Block this user?' },
   { opener: 'Open form dialog', name: 'Set a rate' },
   { opener: 'Open side sheet', name: 'Green Valley School' },

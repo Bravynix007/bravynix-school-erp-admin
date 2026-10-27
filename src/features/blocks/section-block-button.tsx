@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/components/ui/toast';
 import { ReasonDialog } from '@/features/users/person-dialogs';
 import { useGuardedWrite } from '@/lib/hooks/use-one-at-a-time';
-import { BLOCK_EFFECT, SECTION_NOUN } from './section-copy';
+import { BLOCK_EFFECT, SECTION_NOUN, sectionTitle } from './section-copy';
 import type { BlockTarget } from './types';
 import { useBlockSection, useUnblockSection } from './use-blocks';
 
@@ -42,7 +42,9 @@ export function SectionBlockButton({
   const unblock = useUnblockSection();
   const [dialog, setDialog] = useState<Dialog | null>(null);
 
-  if (!blocked && !canBlock) return null;
+  // A write refreshes the Society and Institution, which can take the button away while its dialog is open
+  // (the Institution was deactivated, or the block lifted, meanwhile). The dialog stays so the outcome is shown.
+  if (!blocked && !canBlock && dialog === null) return null;
 
   const noun = SECTION_NOUN[target.section];
   const close = () => {
@@ -61,15 +63,17 @@ export function SectionBlockButton({
 
   return (
     <>
-      <Button
-        ref={trigger}
-        variant="secondary"
-        size="sm"
-        aria-label={`${blocked ? 'Unblock' : 'Block'} ${noun} of ${name}`}
-        onClick={() => setDialog(blocked ? 'unblock' : 'block')}
-      >
-        {blocked ? 'Unblock' : 'Block'} {noun}
-      </Button>
+      {blocked || canBlock ? (
+        <Button
+          ref={trigger}
+          variant="secondary"
+          size="sm"
+          aria-label={`${blocked ? 'Unblock' : 'Block'} ${noun} of ${name}`}
+          onClick={() => setDialog(blocked ? 'unblock' : 'block')}
+        >
+          {blocked ? 'Unblock' : 'Block'} {noun}
+        </Button>
+      ) : null}
 
       {dialog === 'block' ? (
         <ReasonDialog
@@ -82,7 +86,10 @@ export function SectionBlockButton({
             error: block.error,
             overrides: {
               DUPLICATE: `The ${noun} of ${name} are already blocked.`,
-              INVALID_STATE: `${name} is deactivated, so nothing can be blocked in it.`,
+              INVALID_STATE:
+                target.institutionId === null
+                  ? `${name} is deactivated, so nothing can be blocked in it.`
+                  : `${name} or its Society is deactivated, so nothing can be blocked in it.`,
             },
           }}
           onClose={close}
@@ -98,7 +105,7 @@ export function SectionBlockButton({
                   },
                   settled,
                 ),
-              () => finish(`${noun} of ${name} blocked`),
+              () => finish(`${sectionTitle(target.section)} of ${name} blocked`),
             )
           }
         />
@@ -114,7 +121,7 @@ export function SectionBlockButton({
         onConfirm={() =>
           attempt(
             (settled) => unblock.mutate(target, settled),
-            () => finish(`${noun} of ${name} unblocked`),
+            () => finish(`${sectionTitle(target.section)} of ${name} unblocked`),
           )
         }
       >
