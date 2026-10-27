@@ -190,7 +190,7 @@ describe('LoadMore', () => {
 describe('FilterBar', () => {
   const statuses = [
     { value: 'active', label: 'Active' },
-    { value: 'paused', label: 'Paused' },
+    { value: 'inactive', label: 'Inactive' },
   ];
 
   function Harness() {
@@ -227,11 +227,11 @@ describe('FilterBar', () => {
     render(<Harness />);
     expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
     expect(screen.getByRole('status')).toHaveTextContent('142 Institutions');
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'paused');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Status' }), 'inactive');
     const applied = screen.getByRole('list', { name: 'Applied filters' });
-    expect(applied).toHaveTextContent('Status: Paused');
+    expect(applied).toHaveTextContent('Status: Inactive');
     expect(screen.getByRole('status')).toHaveTextContent('3 Institutions');
-    await userEvent.click(screen.getByRole('button', { name: 'Remove filter Status: Paused' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove filter Status: Inactive' }));
     expect(screen.queryByRole('list', { name: 'Applied filters' })).toBeNull();
   });
 

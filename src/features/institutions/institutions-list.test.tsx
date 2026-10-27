@@ -167,6 +167,10 @@ describe('InstitutionsList', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Block staff of Sri Vidya High School' })).toBeNull();
+
+    // Closing the dialog leaves nothing to return focus to, so it goes to the list.
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Institutions' })).toHaveFocus());
   });
 
   it('keeps the refusal on screen when the block was lifted elsewhere and the refresh drops the button', async () => {

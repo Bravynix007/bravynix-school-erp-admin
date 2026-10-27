@@ -51,14 +51,14 @@ export function SectionBlockButton({
     block.reset();
     unblock.reset();
     setDialog(null);
-  };
-  const finish = (message: string) => {
-    close();
-    toast.success(message);
     // The refetch has already run, so a dropped row has already unmounted this button.
     window.setTimeout(() => {
       if (!trigger.current?.isConnected) onTriggerGone?.();
     }, 0);
+  };
+  const finish = (message: string) => {
+    close();
+    toast.success(message);
   };
 
   return (

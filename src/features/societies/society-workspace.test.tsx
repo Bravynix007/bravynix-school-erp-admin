@@ -158,6 +158,29 @@ describe('SocietyWorkspace', () => {
     expect(screen.queryByRole('button', { name: /Owners of Sri Vidya/ })).not.toBeInTheDocument();
   });
 
+  it('keeps focus on the Access tab when lifting a block removes an Institution’s button', async () => {
+    const deactivated = (blockedSections: ('staff' | 'students')[]) =>
+      society({
+        institutions: [{ id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 0, blockedSections }],
+      });
+    api.get.mockResolvedValueOnce(deactivated(['staff'])).mockResolvedValue(deactivated([]));
+    blocks.list.mockResolvedValue({
+      items: [block()],
+      meta: { page: 1, limit: 100, totalItems: 1, totalPages: 1 },
+    });
+    blocks.unblock.mockResolvedValue({ id: 'b1', status: 0 });
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: 'Access' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Unblock staff of Sri Vidya High School' }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Unblock staff' }),
+    );
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Access' })).toHaveFocus());
+  });
+
   it('shows a deactivated Society without actions', async () => {
     api.get.mockResolvedValue(society({ status: 0 }));
     renderScreen(<SocietyWorkspace />);
