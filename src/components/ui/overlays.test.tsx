@@ -14,7 +14,7 @@ describe('Dialog', () => {
       <Dialog
         open={false}
         onClose={() => {}}
-        title="Pause Institution"
+        title="Deactivate Institution"
         description="Staff lose access today."
       >
         body
@@ -22,11 +22,11 @@ describe('Dialog', () => {
     );
     expect(screen.queryByText('body')).toBeNull();
     rerender(
-      <Dialog open onClose={() => {}} title="Pause Institution" description="Staff lose access today.">
+      <Dialog open onClose={() => {}} title="Deactivate Institution" description="Staff lose access today.">
         body
       </Dialog>,
     );
-    const dialog = screen.getByRole('dialog', { name: 'Pause Institution' });
+    const dialog = screen.getByRole('dialog', { name: 'Deactivate Institution' });
     expect(dialog).toHaveAccessibleDescription('Staff lose access today.');
     expect(screen.getByText('body')).toBeInTheDocument();
   });

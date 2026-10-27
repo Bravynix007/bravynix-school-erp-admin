@@ -18,9 +18,11 @@ export interface SocietySummary extends Stamped {
   /** 1 active, 0 deactivated. */
   status: number;
   institutionCount: number;
+  /** The Society's Owners are blocked (API design 10.4e). */
+  blocked: boolean;
 }
 
-/** The Society resource of PLT-03, PLT-04, PLT-05, PLT-07 and PLT-08. */
+/** The Society resource of PLT-03, PLT-04 and PLT-05. */
 export interface Society extends Stamped {
   code: string;
   name: string;
@@ -33,10 +35,18 @@ export interface Society extends Stamped {
   status: number;
   institutionCount: number;
   version: number;
+  /** `['owners']` while the Society's Owners are blocked. */
+  blockedSections: 'owners'[];
 }
 
 export interface SocietyDetail extends Society {
-  institutions: { id: string; code: string; name: string; status: number }[];
+  institutions: {
+    id: string;
+    code: string;
+    name: string;
+    status: number;
+    blockedSections: ('staff' | 'students')[];
+  }[];
   owners: { id: string; displayName: string; email: string; accountStatus: number }[];
 }
 

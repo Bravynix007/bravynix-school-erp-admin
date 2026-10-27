@@ -46,6 +46,15 @@ describe('SocietiesList', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/societies/workspace?id=s1'));
   });
 
+  it('marks a Society whose Owners are blocked', async () => {
+    api.list.mockResolvedValue(
+      page([summary({ blocked: true }), summary({ id: 's2', code: 'NSS', name: 'Navodaya' })]),
+    );
+    renderScreen(<SocietiesList />);
+    expect(await screen.findByText('Owners blocked')).toBeInTheDocument();
+    expect(screen.getAllByText('Owners blocked')).toHaveLength(1);
+  });
+
   it('asks for the first page, sorted by name', async () => {
     api.list.mockResolvedValue(page([summary()]));
     renderScreen(<SocietiesList />);

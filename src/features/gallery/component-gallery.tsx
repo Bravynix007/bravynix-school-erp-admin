@@ -18,6 +18,7 @@ import { SeatMeter } from '@/components/ui/seat-meter';
 import { Select } from '@/components/ui/select';
 import { Skeleton, TableSkeleton } from '@/components/ui/skeleton';
 import { StampBlock } from '@/components/ui/stamp-block';
+import { BlockedSectionChips } from '@/features/blocks/blocked-section-chips';
 import { StatusChip, statusTone } from '@/components/ui/status-chip';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { TextField } from '@/components/ui/text-field';
@@ -42,7 +43,8 @@ interface Demo {
   id: string;
   name: string;
   code: string;
-  status: 'Active' | 'Paused' | 'Inactive';
+  status: 'Active' | 'Inactive';
+  staffBlocked: boolean;
   seats: number;
   owner: string;
 }
@@ -53,7 +55,8 @@ const ALL: Demo[] = Array.from({ length: 47 }, (_, i) => ({
     ['Green Valley School', 'Lakeview Academy', 'St. Mary Public School', 'Sri Vidya Vidyalaya'][i % 4]! +
     ` ${i + 1}`,
   code: `INS-${String(i + 1).padStart(3, '0')}`,
-  status: (['Active', 'Paused', 'Inactive'] as const)[i % 3]!,
+  status: (['Active', 'Inactive'] as const)[i % 2]!,
+  staffBlocked: i % 4 === 0,
   seats: 120 + ((i * 97) % 1800),
   // One long address: a table must not clip it on a phone.
   owner:
@@ -139,7 +142,12 @@ function Gallery() {
     {
       key: 'status',
       header: 'Status',
-      cell: (r) => <StatusChip tone={statusTone.tenant[r.status]} label={r.status} />,
+      cell: (r) => (
+        <span className="flex flex-wrap gap-1.5">
+          <StatusChip tone={statusTone.tenant[r.status]} label={r.status} />
+          {r.staffBlocked ? <BlockedSectionChips sections={['staff']} /> : null}
+        </span>
+      ),
     },
     { key: 'owner', header: 'Owner email', cell: (r) => r.owner },
     { key: 'seats', header: 'Seats', align: 'end', sortable: true, cell: (r) => r.seats },
@@ -218,7 +226,6 @@ function Gallery() {
               },
               options: [
                 { value: 'Active', label: 'Active' },
-                { value: 'Paused', label: 'Paused' },
                 { value: 'Inactive', label: 'Inactive' },
               ],
             },
@@ -384,9 +391,9 @@ function Gallery() {
         </div>
         <ConfirmDialog
           open={dialog === 'confirm'}
-          title="Pause this Institution?"
-          consequence="Staff and parents lose access until you resume it."
-          confirmLabel="Pause Institution"
+          title="Deactivate this Institution?"
+          consequence="Its staff and parents lose access."
+          confirmLabel="Deactivate Institution"
           onConfirm={() => setDialog(null)}
           onCancel={() => setDialog(null)}
         />

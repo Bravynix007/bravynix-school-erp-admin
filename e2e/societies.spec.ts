@@ -14,6 +14,7 @@ const row = {
   name: 'Sri Vidya Educational Society',
   status: 1,
   institutionCount: 1,
+  blocked: false,
   ...stamps,
 };
 const detail = (changes: object = {}) => ({
@@ -25,7 +26,8 @@ const detail = (changes: object = {}) => ({
   foundedDate: '1998-06-01',
   address: { line1: '12 MG Road', line2: null, pincode: '560001' },
   version: 3,
-  institutions: [{ id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 1 }],
+  blockedSections: [],
+  institutions: [{ id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 1, blockedSections: [] }],
   owners: [{ id: 'o1', displayName: 'Asha Rao', email: 'asha@example.org', accountStatus: 1 }],
   ...changes,
 });

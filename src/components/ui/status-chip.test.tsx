@@ -4,9 +4,9 @@ import { StatusChip, statusTone } from './status-chip';
 
 describe('StatusChip', () => {
   it('shows the word, not colour alone', () => {
-    render(<StatusChip tone={statusTone.tenant.Paused} label="Paused" />);
-    const chip = screen.getByText('Paused');
-    expect(chip).toHaveClass('bg-warning-bg', 'text-warning');
+    render(<StatusChip tone={statusTone.tenant.Inactive} label="Inactive" />);
+    const chip = screen.getByText('Inactive');
+    expect(chip).toHaveClass('bg-neutral-bg', 'text-neutral');
   });
 
   it('keeps one meaning per state', () => {

@@ -29,9 +29,9 @@ test('a dialog traps Tab, closes on Esc and gives focus back to its button', asy
   await signedInGallery(page);
   const opener = page.getByRole('button', { name: 'Open confirm dialog' });
   await opener.click();
-  const dialog = page.getByRole('dialog', { name: 'Pause this Institution?' });
+  const dialog = page.getByRole('dialog', { name: 'Deactivate this Institution?' });
   await expect(dialog).toBeVisible();
-  await expect(dialog).toHaveAccessibleDescription('Staff and parents lose access until you resume it.');
+  await expect(dialog).toHaveAccessibleDescription('Its staff and parents lose access.');
 
   // Tab cycles inside the dialog (or out to the browser's own bar) and never reaches the page behind it.
   for (let i = 0; i < 6; i++) {
@@ -58,7 +58,7 @@ test('"/" does not pull focus out from behind a dialog', async ({ page }) => {
   await page.getByRole('button', { name: 'Open confirm dialog' }).click();
   await page.keyboard.press('/');
   await expect(page.getByRole('searchbox', { name: 'Search Institutions' })).not.toBeFocused();
-  await expect(page.getByRole('dialog')).toContainText('Pause this Institution?');
+  await expect(page.getByRole('dialog')).toContainText('Deactivate this Institution?');
 });
 
 test('the side sheet is 560 px, closes on Esc, on Close and on the backdrop, and returns focus', async ({

@@ -4,6 +4,8 @@ import type * as SocietiesApiModule from './societies-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
 import { renderScreen } from '@/test/render';
+import type * as BlocksApiModule from '@/features/blocks/blocks-api';
+import { block } from '@/test/blocks';
 import { society } from '@/test/societies';
 import { SocietyWorkspace } from './society-workspace';
 
@@ -27,8 +29,15 @@ vi.mock('./societies-api', async (original) => ({
   societiesApi: api,
 }));
 
+const blocks = vi.hoisted(() => ({ list: vi.fn(), block: vi.fn(), unblock: vi.fn() }));
+vi.mock('@/features/blocks/blocks-api', async (original) => ({
+  ...(await original<typeof BlocksApiModule>()),
+  blocksApi: blocks,
+}));
+
 beforeEach(() => {
-  for (const fn of Object.values(api)) fn.mockReset();
+  for (const fn of [...Object.values(api), ...Object.values(blocks)]) fn.mockReset();
+  blocks.list.mockResolvedValue({ items: [], meta: { page: 1, limit: 100, totalItems: 0, totalPages: 1 } });
   replace.mockReset();
   id = 's1';
   window.history.replaceState(null, '', '/societies/workspace/?id=s1');
@@ -108,6 +117,68 @@ describe('SocietyWorkspace', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Deactivate Society' }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/societies'));
     expect(api.deactivate).toHaveBeenCalledWith('s1');
+  });
+
+  it('shows what is blocked in the header and beside each Institution', async () => {
+    api.get.mockResolvedValue(
+      society({
+        blockedSections: ['owners'],
+        institutions: [
+          { id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 1, blockedSections: ['staff'] },
+        ],
+      }),
+    );
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.getByText('Owners blocked')).toBeInTheDocument();
+    expect(screen.queryByText('Staff blocked')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: /Institutions/ }));
+    expect(screen.getByText('Staff blocked')).toBeInTheDocument();
+  });
+
+  it('keeps focus on the Access tab when lifting a block removes the button on a deactivated Society', async () => {
+    api.get
+      .mockResolvedValueOnce(society({ status: 0, blockedSections: ['owners'] }))
+      .mockResolvedValue(society({ status: 0 }));
+    blocks.list.mockResolvedValue({
+      items: [block({ section: 'owners', institutionId: null })],
+      meta: { page: 1, limit: 100, totalItems: 1, totalPages: 1 },
+    });
+    blocks.unblock.mockResolvedValue({ id: 'b1', status: 0 });
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: 'Access' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Unblock Owners of Sri Vidya Educational Society' }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Unblock Owners' }),
+    );
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Access' })).toHaveFocus());
+    expect(screen.queryByRole('button', { name: /Owners of Sri Vidya/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps focus on the Access tab when lifting a block removes an Institution’s button', async () => {
+    const deactivated = (blockedSections: ('staff' | 'students')[]) =>
+      society({
+        institutions: [{ id: 'i1', code: 'SVHS', name: 'Sri Vidya High School', status: 0, blockedSections }],
+      });
+    api.get.mockResolvedValueOnce(deactivated(['staff'])).mockResolvedValue(deactivated([]));
+    blocks.list.mockResolvedValue({
+      items: [block()],
+      meta: { page: 1, limit: 100, totalItems: 1, totalPages: 1 },
+    });
+    blocks.unblock.mockResolvedValue({ id: 'b1', status: 0 });
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: 'Access' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Unblock staff of Sri Vidya High School' }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Unblock staff' }),
+    );
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Access' })).toHaveFocus());
   });
 
   it('shows a deactivated Society without actions', async () => {

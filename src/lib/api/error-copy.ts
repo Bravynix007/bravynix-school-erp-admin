@@ -26,6 +26,7 @@ const COPY: Record<string, string> = {
   ACCOUNT_BLOCKED: 'This account is blocked.',
   MFA_NOT_ENROLLED: 'This person has not set up an authenticator, so there is nothing to reset.',
   AUTHENTICATOR_LOCKED: 'Their authenticator is locked after wrong codes. Unlock their sign-in first.',
+  ROLE_CONFLICT: 'Super Admin and Owner are separate roles. This person already holds the other one.',
   NOT_LOCKED: 'This person is not locked out, so there is nothing to unlock.',
 };
 

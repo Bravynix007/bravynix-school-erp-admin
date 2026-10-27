@@ -23,11 +23,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StampBlock } from '@/components/ui/stamp-block';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
+import { BlockedSectionChips } from '@/features/blocks/blocked-section-chips';
 import { AddPersonDialog } from '@/features/users/person-dialogs';
 import { formatSchoolDate } from '@/lib/format/date';
 import { useGuardedWrite, useOneAtATime } from '@/lib/hooks/use-one-at-a-time';
 import { useUrlState } from '@/lib/hooks/use-url-state';
 import { MAX_OWNERS } from './owner-rows';
+import { SocietyAccess } from './society-access';
 import type { SocietyDetail } from './types';
 import { useAddOwner, useDeactivateSociety, useRemoveOwner, useSociety } from './use-societies';
 
@@ -35,7 +37,7 @@ type Institution = SocietyDetail['institutions'][number];
 type Owner = SocietyDetail['owners'][number];
 
 const TAB_PREFIX = 'society';
-const TABS = ['overview', 'owners', 'institutions'];
+const TABS = ['overview', 'owners', 'institutions', 'access'];
 
 export const societyEditHref = (id: string) => `/societies/edit?id=${id}` as Route;
 
@@ -98,7 +100,16 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
         </>
       ),
     },
-    { key: 'status', header: 'Status', cell: (row) => <TenantStatusChip record={row} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (row) => (
+        <span className="flex flex-wrap gap-1.5">
+          <TenantStatusChip record={row} />
+          <BlockedSectionChips sections={row.blockedSections} />
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -108,7 +119,12 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
         breadcrumb={
           <Breadcrumbs items={[{ label: 'Societies', href: '/societies' }, { label: society.name }]} />
         }
-        status={<TenantStatusChip record={society} />}
+        status={
+          <>
+            <TenantStatusChip record={society} />
+            <BlockedSectionChips sections={society.blockedSections} />
+          </>
+        }
         meta={
           <>
             <Mono>{society.code}</Mono>
@@ -149,6 +165,7 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
               countLabel: `${society.owners.length} of ${MAX_OWNERS}`,
             },
             { value: 'institutions', label: 'Institutions', count: String(society.institutions.length) },
+            { value: 'access', label: 'Access' },
           ]}
         />
 
@@ -248,6 +265,10 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
               }
             />
           </div>
+        </TabPanel>
+
+        <TabPanel idPrefix={TAB_PREFIX} value="access" active={tab === 'access'}>
+          <SocietyAccess society={society} />
         </TabPanel>
       </div>
 
