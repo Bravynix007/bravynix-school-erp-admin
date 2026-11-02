@@ -66,7 +66,7 @@ describe('PlatformDashboardView', () => {
     view.unmount();
     dashboard.get.mockResolvedValue(dashboardFigures({ duesCollectedLastMonthAmount: '0.00' }));
     renderScreen(<PlatformDashboardView />);
-    expect(await screen.findByText('Dues marked paid this month')).toBeInTheDocument();
+    expect(await screen.findByText('Dues with a paid date this month')).toBeInTheDocument();
     expect(screen.queryByText(/vs last month/)).not.toBeInTheDocument();
   });
 

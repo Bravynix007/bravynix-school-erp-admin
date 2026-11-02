@@ -8,22 +8,22 @@ import { cn } from '@/lib/cn';
  */
 export function KpiTile({
   label,
-  value,
   caption,
   exact,
   href,
-  unavailable = false,
+  ...figure
 }: {
   label: string;
-  /** Ignored when `unavailable`. */
-  value?: string;
   caption?: string;
   /** Full value shown on hover and spoken, e.g. "₹12,40,000.00" behind "₹12.4 L". */
   exact?: string;
   href?: Route;
+} & (
+  | { value: string; unavailable?: false }
   /** The figure does not exist yet (its module is not built): the tile says so instead of showing a made-up zero. */
-  unavailable?: boolean;
-}) {
+  | { unavailable: true; value?: undefined }
+)) {
+  const { value, unavailable = false } = figure;
   const body = (
     <>
       <p className="text-overline font-semibold tracking-[0.06em] text-ink-secondary uppercase">{label}</p>

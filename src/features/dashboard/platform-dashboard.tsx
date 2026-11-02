@@ -16,10 +16,9 @@ import { formatSchoolDate, todayIst } from '@/lib/format/date';
 import { collectionChange } from './figures';
 import type { PlatformDashboard } from './types';
 import { useDashboard } from './use-dashboard';
+import { formatCount } from '@/lib/format/count';
 
 const QUEUE_SIZE = 5;
-
-const count = (value: number) => value.toLocaleString('en-IN');
 
 /**
  * Screen 08: what the platform looks like today (PLT-01) and the dues that need chasing. Figures that do not exist
@@ -65,17 +64,17 @@ function Tiles({ figures }: { figures: PlatformDashboard }) {
   const change = collectionChange(figures.duesCollectedThisMonthAmount, figures.duesCollectedLastMonthAmount);
   return (
     <section aria-label="Platform figures" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      <KpiTile label="Societies" value={count(figures.societies)} caption="Active" href="/societies" />
+      <KpiTile label="Societies" value={formatCount(figures.societies)} caption="Active" href="/societies" />
       <KpiTile
         label="Institutions"
-        value={count(figures.institutions)}
+        value={formatCount(figures.institutions)}
         caption="Active, in active Societies"
         href="/institutions"
       />
       {figures.activeStudents === null ? (
         <KpiTile label="Active students" unavailable caption="Counted once students are added" />
       ) : (
-        <KpiTile label="Active students" value={count(figures.activeStudents)} />
+        <KpiTile label="Active students" value={formatCount(figures.activeStudents)} />
       )}
       <KpiTile
         label="Dues outstanding"
@@ -88,12 +87,12 @@ function Tiles({ figures }: { figures: PlatformDashboard }) {
         label="Collected this month"
         value={formatMoneyCompact(figures.duesCollectedThisMonthAmount)}
         exact={formatMoney(figures.duesCollectedThisMonthAmount)}
-        caption={change ?? 'Dues marked paid this month'}
+        caption={change ?? 'Dues with a paid date this month'}
       />
       {figures.openAiReports === null ? (
         <KpiTile label="Open AI reports" unavailable caption="Available with the AI reports" />
       ) : (
-        <KpiTile label="Open AI reports" value={count(figures.openAiReports)} href="/ai-reports" />
+        <KpiTile label="Open AI reports" value={formatCount(figures.openAiReports)} href="/ai-reports" />
       )}
     </section>
   );
@@ -111,7 +110,9 @@ function OpenDues() {
         <h2 className="text-h3 font-semibold">
           Open dues
           {total === undefined ? null : (
-            <span className="ml-2 text-caption font-normal text-ink-secondary">{count(total)} open</span>
+            <span className="ml-2 text-caption font-normal text-ink-secondary">
+              {formatCount(total)} open
+            </span>
           )}
         </h2>
         <Link href="/dues" className="text-label font-medium text-primary hover:underline">
@@ -142,7 +143,7 @@ function OpenDues() {
           {list.data.items.map((due) => (
             <li key={due.id}>
               <Link
-                href={`/dues?due=${due.id}` as Route}
+                href={`/dues?due=${encodeURIComponent(due.id)}` as Route}
                 className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-5 py-3 hover:bg-row-hover"
               >
                 <span className="min-w-0">

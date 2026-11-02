@@ -11,6 +11,7 @@ import { formatMoney } from '@/lib/format/money';
 import { formatSchoolDate } from '@/lib/format/date';
 import { adjustmentAmount, studentCountOf, type DueForm } from './due-form';
 import { sumDue, toPaise } from './due-math';
+import { formatCount } from '@/lib/format/count';
 
 /** The API's name for each field, which is where a server refusal is shown and cleared. */
 export const DUE_FIELD: Record<keyof DueForm, string> = {
@@ -62,7 +63,7 @@ export function DueFields({
         hint={
           autoCount === 0
             ? 'No students are on the system yet, so type the count and say where it comes from.'
-            : `The system counts ${autoCount.toLocaleString('en-IN')}.`
+            : `The system counts ${formatCount(autoCount)}.`
         }
         {...field('studentCount')}
       />
@@ -100,7 +101,7 @@ export function DuePreview({ form, rate }: { form: DueForm; rate: string }) {
   const adjustment = adjustmentAmount(form.adjustment.trim());
   const rows = [
     {
-      label: `${count.toLocaleString('en-IN')} ${count === 1 ? 'student' : 'students'} × ${formatMoney(rate)}`,
+      label: `${formatCount(count)} ${count === 1 ? 'student' : 'students'} × ${formatMoney(rate)}`,
       amount: sum.base,
     },
     ...(toPaise(adjustment) !== 0n ? [{ label: 'Adjustment', amount: adjustment }] : []),
