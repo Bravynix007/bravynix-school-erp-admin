@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { Actor } from '@/lib/api/envelope';
 import { formatInstant } from '@/lib/format/date';
 import { cn } from '@/lib/cn';
@@ -5,7 +6,9 @@ import type { StatusTone } from './status-chip';
 
 export interface TimelineEntry {
   id: string;
-  action: string;
+  action: ReactNode;
+  /** A line under the action, such as a note. */
+  detail?: ReactNode;
   actor: Actor | null;
   at: string;
   tone?: StatusTone;
@@ -33,6 +36,7 @@ export function Timeline({ entries, label }: { entries: TimelineEntry[]; label: 
           </span>
           <div className="min-w-0">
             <p className="text-body text-ink">{entry.action}</p>
+            {entry.detail ? <p className="text-caption text-ink-secondary">{entry.detail}</p> : null}
             <p className="text-caption text-ink-tertiary">
               {entry.actor?.id ? entry.actor.displayName : 'System'} ·{' '}
               <span className="tabular">{formatInstant(entry.at)}</span>

@@ -24,6 +24,7 @@ import { StampBlock } from '@/components/ui/stamp-block';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
 import { BlockedSectionChips } from '@/features/blocks/blocked-section-chips';
+import { institutionWorkspaceHref } from '@/features/institutions/institution-workspace';
 import { AddPersonDialog } from '@/features/users/person-dialogs';
 import { formatSchoolDate } from '@/lib/format/date';
 import { useGuardedWrite, useOneAtATime } from '@/lib/hooks/use-one-at-a-time';
@@ -257,6 +258,7 @@ function Workspace({ society, reload }: { society: SocietyDetail; reload: () => 
               columns={institutionColumns}
               rows={society.institutions}
               getRowId={(row) => row.id}
+              onRowOpen={(row) => router.push(institutionWorkspaceHref(row.id))}
               empty={
                 <EmptyState
                   title="No Institutions yet"

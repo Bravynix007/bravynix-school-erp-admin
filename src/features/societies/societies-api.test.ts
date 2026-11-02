@@ -13,6 +13,13 @@ function listed(query: Parameters<ReturnType<typeof createSocietiesApi>['list']>
 const base = { page: 2, limit: 20, sort: '-name', q: '', status: '' };
 
 describe('societies api', () => {
+  it('encodes the ID it puts in the path, because it comes from the address bar', async () => {
+    const fetch = fakeFetch(ok({}));
+    const api = createSocietiesApi(new ApiClient({ baseUrl: 'http://api.test/v1', fetch }));
+    await api.get('a/../b?x=1');
+    expect(String(fetch.mock.calls[0]![0])).toContain('/v1/platform/societies/a%2F..%2Fb%3Fx%3D1');
+  });
+
   it('asks for the page, limit and sort it was given', async () => {
     const params = await listed(base);
     expect(params.get('page')).toBe('2');

@@ -8,8 +8,9 @@ import { institution } from '@/test/blocks';
 import { renderScreen } from '@/test/render';
 import { InstitutionsList } from './institutions-list';
 
+const push = vi.hoisted(() => vi.fn());
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push }),
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
@@ -30,6 +31,7 @@ const page = (items: ReturnType<typeof institution>[], totalItems = items.length
 });
 
 beforeEach(() => {
+  push.mockReset();
   api.list.mockReset();
   blocks.block.mockReset();
   blocks.unblock.mockReset();
@@ -37,6 +39,13 @@ beforeEach(() => {
 });
 
 describe('InstitutionsList', () => {
+  it('opens the Institution’s workspace from its name', async () => {
+    api.list.mockResolvedValue(page([institution()]));
+    renderScreen(<InstitutionsList />);
+    await userEvent.click(await screen.findByRole('button', { name: /^Sri Vidya High School\s*SVHS$/ }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/institutions/workspace?id=i1'));
+  });
+
   it('lists the Institutions with their Society, status and blocked sections', async () => {
     api.list.mockResolvedValue(
       page([

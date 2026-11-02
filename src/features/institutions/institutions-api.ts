@@ -1,7 +1,7 @@
 import { api, type ApiClient } from '@/lib/api/client';
 import { getPage, type Page } from '@/lib/api/lists';
 import { statusQuery } from '@/features/societies/societies-api';
-import type { InstitutionSummary } from './types';
+import type { InstitutionDetail, InstitutionSummary } from './types';
 
 export interface InstitutionListQuery {
   page: number;
@@ -22,9 +22,11 @@ export function blockedQuery(blocked: string): { blocked?: boolean } {
   return {};
 }
 
-/** PLT-19: Super Admin reads the Institutions of every Society; Owners add and edit them (API design 10.4c). */
+/** PLT-19 and PLT-45: Super Admin reads the Institutions of every Society; Owners add and edit them (API design 10.4c). */
 export function createInstitutionsApi(client: ApiClient = api) {
   return {
+    /** PLT-45: one Institution, active or deactivated. */
+    get: (id: string) => client.data<InstitutionDetail>(`platform/institutions/${encodeURIComponent(id)}`),
     list(query: InstitutionListQuery): Promise<Page<InstitutionSummary>> {
       return getPage<InstitutionSummary>(
         'platform/institutions',

@@ -10,9 +10,10 @@ import { society } from '@/test/societies';
 import { SocietyWorkspace } from './society-workspace';
 
 const replace = vi.fn();
+const push = vi.fn();
 let id: string | null = 's1';
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace }),
+  useRouter: () => ({ replace, push }),
   useSearchParams: () => ({
     get: (key: string) => (key === 'id' ? id : new URLSearchParams(window.location.search).get(key)),
   }),
@@ -39,6 +40,7 @@ beforeEach(() => {
   for (const fn of [...Object.values(api), ...Object.values(blocks)]) fn.mockReset();
   blocks.list.mockResolvedValue({ items: [], meta: { page: 1, limit: 100, totalItems: 0, totalPages: 1 } });
   replace.mockReset();
+  push.mockReset();
   id = 's1';
   window.history.replaceState(null, '', '/societies/workspace/?id=s1');
 });
@@ -68,6 +70,15 @@ describe('SocietyWorkspace', () => {
     expect(screen.getByText('1 of 3 Owners')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('tab', { name: /Institutions/ }));
     expect(screen.getByText('Sri Vidya High School')).toBeInTheDocument();
+  });
+
+  it('opens an Institution’s workspace from the Institutions tab', async () => {
+    api.get.mockResolvedValue(society());
+    renderScreen(<SocietyWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: /Institutions/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Sri Vidya High School/ }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/institutions/workspace?id=i1'));
   });
 
   it('keeps the open tab in the URL, and opens it again from a shared link', async () => {

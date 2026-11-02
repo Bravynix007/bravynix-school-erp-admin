@@ -38,18 +38,22 @@ export function createSocietiesApi(client: ApiClient = api) {
       );
     },
     create: (body: CreateSocietyBody) => client.data<SocietyDetail>(base, { method: 'POST', body }),
-    get: (id: string) => client.data<SocietyDetail>(`${base}/${id}`),
+    get: (id: string) => client.data<SocietyDetail>(`${base}/${encodeURIComponent(id)}`),
     update: (id: string, body: UpdateSocietyBody) =>
-      client.data<Society>(`${base}/${id}`, { method: 'PATCH', body }),
-    deactivate: (id: string) => client.data<{ id: string; status: 0 }>(`${base}/${id}`, { method: 'DELETE' }),
+      client.data<Society>(`${base}/${encodeURIComponent(id)}`, { method: 'PATCH', body }),
+    deactivate: (id: string) =>
+      client.data<{ id: string; status: 0 }>(`${base}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     /** PLT-09 and PLT-10 (API design 10.4d). */
     addOwner: (id: string, body: NewPerson) =>
       client.data<{ id: string; email: string; displayName: string; societyId: string; seatNo: number }>(
-        `${base}/${id}/owners`,
+        `${base}/${encodeURIComponent(id)}/owners`,
         { method: 'POST', body },
       ),
     removeOwner: (id: string, userId: string) =>
-      client.data<{ id: string; status: 0 }>(`${base}/${id}/owners/${userId}`, { method: 'DELETE' }),
+      client.data<{ id: string; status: 0 }>(
+        `${base}/${encodeURIComponent(id)}/owners/${encodeURIComponent(userId)}`,
+        { method: 'DELETE' },
+      ),
   };
 }
 
