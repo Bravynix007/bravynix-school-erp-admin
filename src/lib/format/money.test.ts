@@ -30,6 +30,11 @@ describe('formatMoneyCompact', () => {
     ['100000.00', '₹1 L'],
     ['12000000.00', '₹1.2 Cr'],
     ['94725.00', '₹94,725'],
+    // Rounding to one decimal must not write 100 lakh: that is a crore.
+    ['9994999.00', '₹99.9 L'],
+    ['9995000.00', '₹1 Cr'],
+    ['9999999.99', '₹1 Cr'],
+    ['99999.99', '₹99,999'],
   ])('%s → %s', (input, expected) => {
     expect(formatMoneyCompact(input)).toBe(expected);
   });

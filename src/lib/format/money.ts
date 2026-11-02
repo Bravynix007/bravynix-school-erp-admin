@@ -31,7 +31,8 @@ export function formatMoneyCompact(amount: string): string {
     const shown = Math.round((value / divisor) * 10) / 10;
     return `${sign}₹${shown % 1 === 0 ? shown.toFixed(0) : shown.toFixed(1)} ${unit}`;
   };
-  if (rupees >= 1_00_00_000) return scaled(rupees, 1_00_00_000, 'Cr');
+  // ₹99,95,000 rounds to 100 lakh, which is written as a crore.
+  if (rupees >= 1_00_00_000 || Math.round(rupees / 10_000) >= 1_000) return scaled(rupees, 1_00_00_000, 'Cr');
   if (rupees >= 1_00_000) return scaled(rupees, 1_00_000, 'L');
   return `${sign}₹${groupIndian(String(rupees))}`;
 }

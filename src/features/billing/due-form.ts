@@ -1,6 +1,7 @@
 import { fromPaise, sumDue, toPaise } from './due-math';
 import { twoDecimals } from './rate-form';
 import type { Due, EditDueBody, RaiseDueBody } from './types';
+import { formatCount } from '@/lib/format/count';
 
 /** The raise and edit forms' fields as typed (API design 10.22). */
 export interface DueForm {
@@ -85,7 +86,7 @@ export function dueFormErrors(form: DueForm, context: FormContext): Record<strin
   const count = studentCountOf(form.studentCount);
   if (form.studentCount.trim() === '') errors.studentCount = 'Enter the number of students.';
   else if (count === undefined || count > MAX_STUDENTS) {
-    errors.studentCount = `Enter a whole number from 0 to ${MAX_STUDENTS.toLocaleString('en-IN')}.`;
+    errors.studentCount = `Enter a whole number from 0 to ${formatCount(MAX_STUDENTS)}.`;
   }
 
   const countNote = form.studentCountNote.trim();

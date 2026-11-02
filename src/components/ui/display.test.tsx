@@ -65,6 +65,13 @@ describe('KpiTile', () => {
     expect(screen.queryByRole('link')).toBeNull();
   });
 
+  it('says "Not available yet" for a figure that does not exist, instead of a zero', () => {
+    render(<KpiTile label="Active students" unavailable caption="Counted once students are added" />);
+    expect(screen.getByText('Not available yet')).toBeInTheDocument();
+    expect(screen.queryByText('0')).toBeNull();
+    expect(screen.getByText('Counted once students are added')).toBeInTheDocument();
+  });
+
   it('is a link when it opens a filtered list', () => {
     render(<KpiTile label="Societies" value="12" href="/societies" />);
     expect(screen.getByRole('link')).toHaveAttribute('href', '/societies');

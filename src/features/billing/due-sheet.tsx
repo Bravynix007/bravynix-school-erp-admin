@@ -24,6 +24,7 @@ import { DueStatusChip } from './due-status';
 import { PayDueDialog } from './pay-due-dialog';
 import { DueStatus, PAYMENT_MODE_NAMES, type Due } from './types';
 import { useCancelDue, useDue, useEditDue, useMarkDuePaid } from './use-dues';
+import { formatCount } from '@/lib/format/count';
 
 type Action = 'edit' | 'pay' | 'cancel';
 
@@ -159,7 +160,7 @@ export function DueSheet({ id, onClose }: { id: string; onClose: () => void }) {
 function DueBody({ due }: { due: Due }) {
   const rows = [
     {
-      label: `${due.studentCount.toLocaleString('en-IN')} ${due.studentCount === 1 ? 'student' : 'students'} × ${formatMoney(due.ratePerStudentAmount)}`,
+      label: `${formatCount(due.studentCount)} ${due.studentCount === 1 ? 'student' : 'students'} × ${formatMoney(due.ratePerStudentAmount)}`,
       amount: due.baseAmount,
       note: due.studentCountNote ?? undefined,
     },
