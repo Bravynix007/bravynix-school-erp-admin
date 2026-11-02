@@ -201,12 +201,12 @@ describe('DueSheet', () => {
     expect(within(dialog).getByText(/starts on a different day/)).toBeInTheDocument();
   });
 
-  it('says the automatic count is used when the count is cleared, not that the period moved', async () => {
+  it('asks for the count when it is cleared, and does not say the period moved', async () => {
     show();
     await userEvent.click(await screen.findByRole('button', { name: 'Edit' }));
     const dialog = formDialog();
     await userEvent.clear(within(dialog).getByLabelText(/Students/));
-    expect(within(dialog).getByText(/the automatic count is used/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Enter the count to see the total/)).toBeInTheDocument();
     expect(within(dialog).queryByText(/starts on a different day/)).not.toBeInTheDocument();
   });
 

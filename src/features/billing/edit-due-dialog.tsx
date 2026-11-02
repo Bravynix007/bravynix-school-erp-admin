@@ -69,9 +69,7 @@ export function EditDueDialog({
       ) : studentCountOf(form.studentCount) !== undefined ? (
         <DuePreview form={form} rate={rate} />
       ) : (
-        <InlineAlert tone="info">
-          With no count typed, the automatic count is used. The total is worked out when you save.
-        </InlineAlert>
+        <InlineAlert tone="info">Enter the count to see the total.</InlineAlert>
       )}
       {unchanged ? <InlineAlert tone="info">Nothing has changed yet.</InlineAlert> : null}
     </FormDialog>
