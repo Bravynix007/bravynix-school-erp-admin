@@ -183,6 +183,15 @@ describe('DueSheet', () => {
     expect(api.edit).not.toHaveBeenCalled();
   });
 
+  it('says the automatic count is used when the count is cleared, not that the period moved', async () => {
+    show();
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+    const dialog = formDialog();
+    await userEvent.clear(within(dialog).getByLabelText(/Students/));
+    expect(within(dialog).getByText(/the automatic count is used/i)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/starts on a different day/)).not.toBeInTheDocument();
+  });
+
   it('refuses a deduction that takes the total below zero before asking the API', async () => {
     show();
     await userEvent.click(await screen.findByRole('button', { name: 'Edit' }));
