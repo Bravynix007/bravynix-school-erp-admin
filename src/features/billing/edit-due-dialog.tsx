@@ -61,12 +61,16 @@ export function EditDueDialog({
         onChange={change}
         errorOf={(field) => errors[field] ?? server.of(field)}
       />
-      {rate !== null && studentCountOf(form.studentCount) !== undefined ? (
-        <DuePreview form={form} rate={rate} />
-      ) : (
+      {rate === null ? (
         <InlineAlert tone="info">
           The period starts on a different day, so the rate in force on that day is used. The total is worked
           out when you save.
+        </InlineAlert>
+      ) : studentCountOf(form.studentCount) !== undefined ? (
+        <DuePreview form={form} rate={rate} />
+      ) : (
+        <InlineAlert tone="info">
+          With no count typed, the automatic count is used. The total is worked out when you save.
         </InlineAlert>
       )}
       {unchanged ? <InlineAlert tone="info">Nothing has changed yet.</InlineAlert> : null}
