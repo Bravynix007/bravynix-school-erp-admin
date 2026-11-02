@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
@@ -54,6 +54,15 @@ describe('PricingTab', () => {
         /A due cannot be raised for this Institution until the first rate starts on 01-04-2027/,
       ),
     ).toBeInTheDocument();
+  });
+
+  it('names the earliest of several scheduled rates as the day a due can first be raised', async () => {
+    api.history.mockResolvedValue([
+      rate({ id: 'b', effectiveFromDate: '2027-10-01', inForce: false }),
+      rate({ id: 'a', effectiveFromDate: '2027-04-01', inForce: false }),
+    ]);
+    show();
+    expect(await screen.findByText(/until the first rate starts on 01-04-2027/)).toBeInTheDocument();
   });
 
   it('asks for the first rate when there is none, and offers the button only to an active Institution', async () => {
@@ -129,6 +138,9 @@ describe('PricingTab', () => {
     ).toBeInTheDocument();
     await userEvent.clear(within(dialog).getByLabelText(/In force from/));
     expect(within(dialog).queryByText('taken')).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByText('A rate already starts on this date. Choose another day.'),
+    ).not.toBeInTheDocument();
   });
 
   it('explains a deactivated Institution when the API refuses the rate for it', async () => {
@@ -157,7 +169,11 @@ describe('PricingTab', () => {
     await userEvent.type(within(dialog).getByLabelText(/Rate per student/), '60');
     await userEvent.type(within(dialog).getByLabelText(/In force from/), '2027-06-01');
     const submit = within(dialog).getByRole('button', { name: 'Set rate' });
-    await userEvent.dblClick(submit);
+    // Both clicks land before React renders the busy button, so only the guard can stop the second.
+    await act(async () => {
+      fireEvent.click(submit);
+      fireEvent.click(submit);
+    });
     expect(api.set).toHaveBeenCalledTimes(1);
   });
 

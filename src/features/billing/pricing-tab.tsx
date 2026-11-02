@@ -110,7 +110,7 @@ export function PricingTab({
           description={
             canChange
               ? 'Set the rate per student before a due can be raised for this Institution.'
-              : 'This Institution is deactivated and has no rate.'
+              : 'This Institution, or its Society, is deactivated and has no rate.'
           }
           action={setButton}
         />
@@ -164,6 +164,9 @@ export function PricingTab({
         <SetRateDialog
           institutionName={institutionName}
           write={{ pending: setRate.isPending, error: setRate.error, overrides: SET_RATE_OVERRIDES }}
+          onEdit={() => {
+            if (setRate.isError) setRate.reset();
+          }}
           onClose={() => {
             setRate.reset();
             setSetting(false);

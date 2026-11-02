@@ -21,6 +21,12 @@ describe('pricing api', () => {
     expect(call(0)).toMatchObject({ path: '/v1/platform/institutions/i1/price-rates', method: 'GET' });
   });
 
+  it('encodes the Institution ID it puts in the path', async () => {
+    const { api, call } = setup(ok([]));
+    await api.history('a/../b');
+    expect(call(0).path).toBe('/v1/platform/institutions/a%2F..%2Fb/price-rates');
+  });
+
   it('adds a rate with its date and note (PLT-23)', async () => {
     const { api, call } = setup(ok(rate(), 'CREATED', 201));
     await api.set('i1', { ratePerStudentAmount: '50.00', effectiveFromDate: '2026-06-01', note: 'Renewal' });

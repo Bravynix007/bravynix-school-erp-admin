@@ -78,7 +78,7 @@ function Workspace({ institution }: { institution: InstitutionDetail }) {
         }
         status={
           <>
-            <TenantStatusChip record={institution} />
+            <TenantStatusChip record={{ status: deactivated ? 0 : 1 }} />
             <BlockedSectionChips sections={institution.blockedSections} />
           </>
         }

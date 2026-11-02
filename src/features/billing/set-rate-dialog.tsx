@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { MoneyField } from '@/components/ui/money-field';
 import { TextField } from '@/components/ui/text-field';
 import { Textarea } from '@/components/ui/textarea';
-import { FormDialog, useServerErrors, type WriteState } from '@/features/users/person-dialogs';
+import { FormDialog, useServerErrors, type WriteState } from '@/components/shell/form-dialog';
 import { emptyRate, rateBody, rateErrors, type RateForm } from './rate-form';
 import type { SetRateBody } from './types';
 
@@ -16,11 +16,14 @@ export function SetRateDialog({
   institutionName,
   write,
   onSubmit,
+  onEdit,
   onClose,
 }: {
   institutionName: string;
   write: WriteState;
   onSubmit: (body: SetRateBody) => void;
+  /** A field was edited: the refusal was about the old values, so its banner goes too. */
+  onEdit: () => void;
   onClose: () => void;
 }) {
   const [form, setForm] = useState<RateForm>(emptyRate);
@@ -28,6 +31,7 @@ export function SetRateDialog({
   const server = useServerErrors(write.error);
   const set = (key: keyof RateForm, field: string) => (value: string) => {
     server.edit(field);
+    onEdit();
     setForm((current) => ({ ...current, [key]: value }));
   };
 

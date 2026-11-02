@@ -23,6 +23,13 @@ describe('institutions api', () => {
     expect(new URL(String(fetch.mock.calls[0]![0])).pathname).toBe('/v1/platform/institutions/i1');
   });
 
+  it('encodes the ID it puts in the path, because it comes from the address bar', async () => {
+    const fetch = fakeFetch(ok({}));
+    const api = createInstitutionsApi(new ApiClient({ baseUrl: 'http://api.test/v1', fetch }));
+    await api.get('a/../b?x=1');
+    expect(String(fetch.mock.calls[0]![0])).toContain('/v1/platform/institutions/a%2F..%2Fb%3Fx%3D1');
+  });
+
   it('reads PLT-19 with the page, limit and sort', async () => {
     const { path, params } = await listed(base);
     expect(path).toBe('/v1/platform/institutions');

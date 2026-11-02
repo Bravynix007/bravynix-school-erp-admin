@@ -87,6 +87,8 @@ describe('InstitutionWorkspace', () => {
     api.get.mockResolvedValue(institutionDetail({ societyStatus: 0 }));
     renderScreen(<InstitutionWorkspace />);
     expect(await screen.findByText(/Its Society is deactivated\./)).toBeInTheDocument();
+    expect(screen.getByText('Inactive')).toBeInTheDocument();
+    expect(screen.queryByText('Active')).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('tab', { name: 'Pricing' }));
     await screen.findByRole('region', { name: 'Rate in force' });
     expect(screen.queryByRole('button', { name: 'Set new rate' })).not.toBeInTheDocument();
@@ -106,9 +108,13 @@ describe('InstitutionWorkspace', () => {
     const view = renderScreen(<InstitutionWorkspace />);
     expect(await screen.findByText(/no longer exists/)).toBeInTheDocument();
     view.unmount();
-    id = null;
-    renderScreen(<InstitutionWorkspace />);
-    expect(screen.getByText(/no longer exists/)).toBeInTheDocument();
+    // An empty `?id=` is no ID either: it would read the list as if it were one Institution.
+    for (const missing of [null, '']) {
+      id = missing;
+      const gone = renderScreen(<InstitutionWorkspace />);
+      expect(screen.getByText(/no longer exists/)).toBeInTheDocument();
+      gone.unmount();
+    }
     expect(api.get).toHaveBeenCalledTimes(1);
   });
 
