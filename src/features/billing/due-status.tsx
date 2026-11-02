@@ -27,7 +27,7 @@ export function DueStatusChip({
   return (
     <span className="inline-flex flex-wrap gap-1.5">
       <StatusChip tone={statusTone.due[name]} label={name} />
-      {isPastDue(due, today) ? <StatusChip tone="error" label="Past due" /> : null}
+      {isPastDue(due, today) ? <StatusChip tone="error" label="Past due date" /> : null}
     </span>
   );
 }

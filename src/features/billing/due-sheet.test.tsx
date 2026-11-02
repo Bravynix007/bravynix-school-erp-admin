@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
 import { due } from '@/test/dues';
 import { renderScreen } from '@/test/render';
@@ -18,6 +18,13 @@ const onClose = vi.fn();
 /** The dialog of an action; the sheet behind it is a dialog too. */
 const formDialog = () => screen.getByRole('dialog', { name: /^(Edit|Mark|Cancel) / });
 const show = () => renderScreen(<DueSheet id="d1" onClose={onClose} />);
+
+/** Today is 10 Nov 2026 in India. */
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-11-10T06:00:00Z'));
+});
+afterEach(() => vi.useRealTimers());
 
 beforeEach(() => {
   for (const fn of Object.values(api)) fn.mockReset();
@@ -183,6 +190,17 @@ describe('DueSheet', () => {
     expect(api.edit).not.toHaveBeenCalled();
   });
 
+  it('swaps the total preview for a note once the period starts on another day', async () => {
+    show();
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit' }));
+    const dialog = formDialog();
+    expect(within(dialog).getByLabelText('Amount of this due')).toBeInTheDocument();
+    await userEvent.clear(within(dialog).getByLabelText(/Period starts/));
+    await userEvent.type(within(dialog).getByLabelText(/Period starts/), '2026-10-05');
+    expect(within(dialog).queryByLabelText('Amount of this due')).not.toBeInTheDocument();
+    expect(within(dialog).getByText(/starts on a different day/)).toBeInTheDocument();
+  });
+
   it('says the automatic count is used when the count is cleared, not that the period moved', async () => {
     show();
     await userEvent.click(await screen.findByRole('button', { name: 'Edit' }));
@@ -234,7 +252,12 @@ describe('DueSheet', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Mark as paid' }));
     const dialog = formDialog();
     await userEvent.selectOptions(within(dialog).getByLabelText(/Paid by/), 'Cash');
-    await userEvent.dblClick(within(dialog).getByRole('button', { name: 'Mark as paid' }));
+    const submit = within(dialog).getByRole('button', { name: 'Mark as paid' });
+    // Both clicks land before React renders the busy button, so only the guard can stop the second.
+    await act(async () => {
+      fireEvent.click(submit);
+      fireEvent.click(submit);
+    });
     expect(api.markPaid).toHaveBeenCalledTimes(1);
   });
 

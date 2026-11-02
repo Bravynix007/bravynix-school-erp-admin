@@ -1,15 +1,13 @@
 /**
  * What the operator reads for the codes the due calls can return, beyond the shared copy (API design 10.22, 12).
- * `NOTE_REQUIRED`, `TOTAL_NEGATIVE` and `OUT_OF_RANGE` also arrive against a field, which then shows its own line.
+ * `NOTE_REQUIRED` and `TOTAL_NEGATIVE` also arrive against a field, which then shows its own line; the codes that only
+ * ever arrive against a field (`OUT_OF_RANGE`, `INVALID_CODE`, `FIELD_NOT_ALLOWED`) have no banner copy.
  */
 export const DUE_ERROR_COPY: Record<string, string> = {
   NO_RATE_IN_FORCE:
     'No rate is in force on the first day of this period. Set a rate in the Institution’s Pricing tab first.',
   TOTAL_NEGATIVE: 'The total cannot be below ₹0.00. Reduce the deduction.',
   NOTE_REQUIRED: 'A note is required for the count or the adjustment you entered.',
-  OUT_OF_RANGE: 'This date is not allowed.',
-  INVALID_CODE: 'Choose how it was paid.',
-  FIELD_NOT_ALLOWED: 'That part of a due cannot be changed.',
   IDEMPOTENCY_KEY_REUSED:
     'Your first try reached the server and raised the due. Close this form and find it in the ledger before raising another.',
   IDEMPOTENCY_IN_PROGRESS: 'The first request is still being processed. Wait a moment and try again.',

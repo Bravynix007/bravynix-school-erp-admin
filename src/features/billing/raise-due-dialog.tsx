@@ -37,13 +37,15 @@ export function RaiseDueDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const server = useServerErrors(write.error);
   /**
-   * The last key sent, and whether its outcome is known. After a lost answer (no response, or a 5xx) the first raise
-   * may have landed, so the key is kept even when the details change: the API then replays it, or answers
-   * IDEMPOTENCY_KEY_REUSED, instead of raising a second invoice.
+   * The key of the last raise, and whether the API gave a definite refusal for it. A refusal (409, 422) is stored with
+   * its key for 24 hours, so sending the same key again would replay it: the next try takes a new key. While the
+   * outcome is unknown (no answer, a 5xx, a request still in progress) the first raise may have landed, so the key is
+   * kept even when the details change: the API replays it, or answers IDEMPOTENCY_KEY_REUSED, instead of raising a
+   * second invoice.
    */
-  const sent = useRef<{ body: string; key: string; known: boolean } | null>(null);
+  const sent = useRef<{ key: string; refused: boolean } | null>(null);
   useEffect(() => {
-    if (sent.current && write.error && !outcomeUnknown(write.error)) sent.current.known = true;
+    if (sent.current && write.error && !outcomeUnknown(write.error)) sent.current.refused = true;
   }, [write.error]);
 
   const periodKnown =
@@ -80,12 +82,9 @@ export function RaiseDueDialog({
         setErrors(found);
         if (institution === null || Object.keys(found).length > 0) return;
         const body = raiseBody(institution.id, shown);
-        const text = JSON.stringify(body);
-        if (sent.current === null || (sent.current.body !== text && sent.current.known)) {
-          sent.current = { body: text, key: crypto.randomUUID(), known: false };
+        if (sent.current === null || sent.current.refused) {
+          sent.current = { key: crypto.randomUUID(), refused: false };
         }
-        sent.current.body = text;
-        sent.current.known = false;
         onSubmit(body, sent.current.key);
       }}
     >
@@ -117,7 +116,14 @@ export function RaiseDueDialog({
   );
 }
 
-/** No answer, or a server error: the raise may or may not have been made. */
+/** The raise may or may not have been made: no answer, a server error, or the first request still running. */
+const UNKNOWN_OUTCOME_CODES = new Set(['IDEMPOTENCY_IN_PROGRESS', 'RESOURCE_BUSY', 'IDEMPOTENCY_KEY_REUSED']);
+
 function outcomeUnknown(error: unknown): boolean {
-  return !(error instanceof ApiError) || error.status === 0 || error.status >= 500;
+  return (
+    !(error instanceof ApiError) ||
+    error.status === 0 ||
+    error.status >= 500 ||
+    UNKNOWN_OUTCOME_CODES.has(error.code)
+  );
 }
