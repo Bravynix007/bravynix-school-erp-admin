@@ -54,20 +54,24 @@ describe('PlatformDashboardView', () => {
     expect(within(figures).getByText('Open AI reports').closest('a')).toHaveAttribute('href', '/ai-reports');
   });
 
-  it('states the change against last month only when last month collected something', async () => {
+  it("shows last month's amount under this month's, in full for a screen reader", async () => {
     dashboard.get.mockResolvedValue(
       dashboardFigures({
         duesCollectedThisMonthAmount: '118000.00',
-        duesCollectedLastMonthAmount: '100000.00',
+        duesCollectedLastMonthAmount: '260000.00',
       }),
     );
     const view = renderScreen(<PlatformDashboardView />);
-    expect(await screen.findByText('+18% vs last month')).toBeInTheDocument();
+    const tile = (await screen.findByText('Collected this month')).closest('div')!;
+    expect(tile).toHaveTextContent('₹2.6 L');
+    expect(tile).toHaveTextContent('last month');
+    expect(within(tile).getByText('₹2,60,000.00', { selector: '.sr-only' })).toBeInTheDocument();
     view.unmount();
     dashboard.get.mockResolvedValue(dashboardFigures({ duesCollectedLastMonthAmount: '0.00' }));
     renderScreen(<PlatformDashboardView />);
-    expect(await screen.findByText('Dues with a paid date this month')).toBeInTheDocument();
-    expect(screen.queryByText(/vs last month/)).not.toBeInTheDocument();
+    const empty = (await screen.findByText('Collected this month')).closest('div')!;
+    expect(within(empty).getByText('₹0.00', { selector: '.sr-only' })).toBeInTheDocument();
+    expect(empty).toHaveTextContent('last month');
   });
 
   it('lists the open dues that fall due first, each opening in the ledger, and links to all of them', async () => {

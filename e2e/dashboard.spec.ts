@@ -60,7 +60,8 @@ test('the dashboard shows the live figures, says "Not available yet" for the res
   await page.goto('/dashboard/');
   const figures = page.getByRole('region', { name: 'Platform figures' });
   await expect(figures).toContainText('Societies');
-  await expect(figures).toContainText('+18% vs last month');
+  await expect(figures).toContainText('₹1 L');
+  await expect(figures).toContainText('last month');
   await expect(figures.getByText('Not available yet')).toHaveCount(2);
   const queue = page.getByRole('region', { name: 'Open dues' });
   await expect(queue).toContainText('Past due');
