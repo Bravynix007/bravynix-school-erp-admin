@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -93,6 +93,24 @@ describe('MoneyField', () => {
     const input = screen.getByLabelText('Monthly fee');
     await userEvent.type(input, '124500.5099');
     expect(input).toHaveValue('124500.50');
+  });
+
+  it('takes a leading minus only when it is signed, for a deduction', async () => {
+    function Signed() {
+      const [value, setValue] = useState('');
+      return <MoneyField label="Adjustment" value={value} onValueChange={setValue} signed />;
+    }
+    render(<Signed />);
+    const input = screen.getByLabelText('Adjustment');
+    await userEvent.type(input, '-2500.505');
+    expect(input).toHaveValue('-2500.50');
+    await userEvent.type(input, '-');
+    expect(input).toHaveValue('-2500.50');
+    cleanup();
+
+    render(<Harness />);
+    await userEvent.type(screen.getByLabelText('Monthly fee'), '-5');
+    expect(screen.getByLabelText('Monthly fee')).toHaveValue('5');
   });
 
   it('ignores letters and a second dot, and drops pasted commas', async () => {

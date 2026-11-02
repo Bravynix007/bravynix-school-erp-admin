@@ -8,13 +8,16 @@ export interface MoneyFieldProps extends Omit<
   /** Exact decimal string such as "124500.50" (API design 7.3); never a number. */
   value: string;
   onValueChange: (value: string) => void;
+  /** Allows a leading minus, for a deduction such as a rebate. */
+  signed?: boolean;
 }
 
 /** Rupees with at most two decimals. The value stays a string end to end (money is never a float). */
 const ALLOWED = /^\d*(\.\d{0,2})?$/;
+const ALLOWED_SIGNED = /^-?\d*(\.\d{0,2})?$/;
 
 export const MoneyField = forwardRef<HTMLInputElement, MoneyFieldProps>(function MoneyField(
-  { value, onValueChange, ...rest },
+  { value, onValueChange, signed = false, ...rest },
   ref,
 ) {
   return (
@@ -22,14 +25,14 @@ export const MoneyField = forwardRef<HTMLInputElement, MoneyFieldProps>(function
       ref={ref}
       {...rest}
       type="text"
-      inputMode="decimal"
+      inputMode={signed ? 'text' : 'decimal'}
       autoComplete="off"
       prefix={<span aria-hidden="true">₹</span>}
       inputClassName="text-right tabular"
       value={value}
       onChange={(event) => {
         const next = event.target.value.replace(/,/g, '').trim();
-        if (ALLOWED.test(next)) onValueChange(next);
+        if ((signed ? ALLOWED_SIGNED : ALLOWED).test(next)) onValueChange(next);
       }}
     />
   );
