@@ -310,7 +310,7 @@ function Totals() {
         label="Collected this month"
         value={formatMoneyCompact(duesCollectedThisMonthAmount)}
         exact={formatMoney(duesCollectedThisMonthAmount)}
-        caption="Dues marked paid this month"
+        caption="Dues with a paid date this month"
       />
       <KpiTile
         label="Open dues"

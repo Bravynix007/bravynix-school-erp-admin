@@ -9,11 +9,12 @@ export const institutionKeys = {
   list: (query: InstitutionListQuery) => [...institutionKeys.all, 'list', query] as const,
 };
 
-export function useInstitutionList(query: InstitutionListQuery) {
+export function useInstitutionList(query: InstitutionListQuery, enabled = true) {
   return useQuery({
     queryKey: institutionKeys.list(query),
     queryFn: () => institutionsApi.list(query),
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 

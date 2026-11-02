@@ -1,8 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type * as InstitutionsApiModule from '@/features/institutions/institutions-api';
 import type * as DuesApiModule from './dues-api';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
 import { dashboardFigures, due, dueLine, quote } from '@/test/dues';
 import { institution } from '@/test/blocks';
@@ -46,6 +46,13 @@ const scope = (changes: Partial<LedgerScope> = {}): LedgerScope => ({
   ...changes,
 });
 
+/** Today is 10 Nov 2026 in India: the fixtures' due date (15 Nov) is ahead, 2020 is long past. */
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-11-10T06:00:00Z'));
+});
+afterEach(() => vi.useRealTimers());
+
 beforeEach(() => {
   for (const fn of [...Object.values(api), dashboard.get, ...Object.values(institutions)]) fn.mockReset();
   api.list.mockResolvedValue(page([dueLine()]));
@@ -84,12 +91,29 @@ describe('DuesLedger', () => {
     expect(rows[1]).toHaveTextContent('15-11-2026');
     expect(rows[1]).toHaveTextContent('₹80,000.00');
     expect(rows[2]).toHaveTextContent('Paid');
-    expect(rows[3]).toHaveTextContent('Past due');
-    expect(rows[1]).not.toHaveTextContent('Past due');
+    expect(rows[3]).toHaveTextContent('Past due date');
+    expect(rows[1]).not.toHaveTextContent('Past due date');
     expect(screen.getByText('₹2,40,000.00')).toBeInTheDocument();
     expect(screen.getByText('₹80,000.00', { selector: '.sr-only' })).toBeInTheDocument();
     expect(screen.getByText('Outstanding')).toBeInTheDocument();
     expect(screen.getByText('Collected this month')).toBeInTheDocument();
+  });
+
+  it('is past due only after the due date, and never once Paid or Cancelled', async () => {
+    api.list.mockResolvedValue(
+      page([
+        dueLine({ id: 'a', invoiceNo: 'INV-A', dueDate: '2026-11-10' }),
+        dueLine({ id: 'b', invoiceNo: 'INV-B', dueDate: '2026-11-09' }),
+        dueLine({ id: 'c', invoiceNo: 'INV-C', dueDate: '2026-11-09', dueStatus: 2, paidDate: '2026-11-10' }),
+        dueLine({ id: 'd', invoiceNo: 'INV-D', dueDate: '2026-11-09', dueStatus: 0 }),
+      ]),
+    );
+    renderScreen(<DuesLedger />);
+    const rows = within(await screen.findByRole('table', { name: 'Dues' })).getAllByRole('row');
+    expect(rows[1]).not.toHaveTextContent('Past due date');
+    expect(rows[2]).toHaveTextContent('Past due date');
+    expect(rows[3]).not.toHaveTextContent('Past due date');
+    expect(rows[4]).not.toHaveTextContent('Past due date');
   });
 
   it('keeps the ledger when the totals cannot be loaded, and says so', async () => {
@@ -226,6 +250,39 @@ describe('raising a due', () => {
     expect(api.raise).not.toHaveBeenCalled();
   });
 
+  it('asks where a count below the automatic one comes from', async () => {
+    api.quote.mockResolvedValue(quote({ studentCountAuto: 100 }));
+    const dialog = await openForm();
+    await fillPeriod(dialog);
+    await waitFor(() => expect(within(dialog).getByLabelText(/Students/)).toHaveValue('100'));
+    await userEvent.clear(within(dialog).getByLabelText(/Students/));
+    await userEvent.type(within(dialog).getByLabelText(/Students/), '90');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
+    expect(within(dialog).getByText(/Say where this count comes from/)).toBeInTheDocument();
+    expect(api.raise).not.toHaveBeenCalled();
+  });
+
+  it('does not overwrite a count the operator typed with the automatic one', async () => {
+    api.quote.mockResolvedValue(quote({ studentCountAuto: 100 }));
+    const dialog = await openForm();
+    await userEvent.type(within(dialog).getByLabelText(/Students/), '90');
+    await fillPeriod(dialog);
+    await waitFor(() => expect(api.quote).toHaveBeenCalled());
+    await within(dialog).findByLabelText(/Where the count comes from/);
+    expect(within(dialog).getByLabelText(/Students/)).toHaveValue('90');
+  });
+
+  it('keeps focus in the form when an Institution is picked and when it is changed', async () => {
+    api.quote.mockResolvedValue(quote());
+    const dialog = await openForm(false);
+    await userEvent.type(within(dialog).getByLabelText(/^Institution/), 'sri');
+    await userEvent.click(await within(dialog).findByRole('button', { name: /Sri Vidya High School/ }));
+    const change = within(dialog).getByRole('button', { name: /Change Institution/ });
+    expect(change).toHaveFocus();
+    await userEvent.click(change);
+    expect(within(dialog).getByRole('textbox', { name: /^Institution/ })).toHaveFocus();
+  });
+
   it('requires a note for an adjustment, and says the Owners see it', async () => {
     api.quote.mockResolvedValue(quote({ studentCountAuto: 100 }));
     const dialog = await openForm();
@@ -303,56 +360,73 @@ describe('raising a due', () => {
     expect(window.location.search).toBe('?due=d1');
   });
 
-  it('keeps the key after an answer that never came or a 5xx, even when the details change', async () => {
+  async function readyToRaise() {
     api.quote.mockResolvedValue(quote({ studentCountAuto: 100 }));
-    api.raise.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'x', 'req-3'));
     const dialog = await openForm();
     await fillPeriod(dialog);
     await waitFor(() => expect(within(dialog).getByLabelText(/Students/)).toHaveValue('100'));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
+    return dialog;
+  }
+  const raiseButton = (dialog: HTMLElement) => within(dialog).getByRole('button', { name: 'Raise due' });
+  const keyOf = (call: number) => api.raise.mock.calls[call]![1];
+
+  it('keeps the key after an answer that never came or a 5xx, even when the details change', async () => {
+    api.raise.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'x', 'req-3'));
+    const dialog = await readyToRaise();
+    await userEvent.click(raiseButton(dialog));
     await within(dialog).findByText('INTERNAL_ERROR');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
+    await userEvent.click(raiseButton(dialog));
     await waitFor(() => expect(api.raise).toHaveBeenCalledTimes(2));
-    expect(api.raise.mock.calls[1]![1]).toBe(api.raise.mock.calls[0]![1]);
+    expect(keyOf(1)).toBe(keyOf(0));
 
     // The outcome is still unknown, so changed details keep the key: the API decides.
     await userEvent.type(within(dialog).getByLabelText(/Pay by/), '2026-11-15');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
+    await userEvent.click(raiseButton(dialog));
     await waitFor(() => expect(api.raise).toHaveBeenCalledTimes(3));
-    expect(api.raise.mock.calls[2]![1]).toBe(api.raise.mock.calls[0]![1]);
+    expect(keyOf(2)).toBe(keyOf(0));
   });
 
-  it('takes a new key for changed details only after a definite refusal', async () => {
-    api.quote.mockResolvedValue(quote({ studentCountAuto: 100 }));
+  it('keeps the key while the first request is still running or its key was already used', async () => {
+    api.raise.mockRejectedValueOnce(new ApiError(409, 'IDEMPOTENCY_IN_PROGRESS', 'x', 'req-4'));
+    api.raise.mockRejectedValueOnce(new ApiError(409, 'RESOURCE_BUSY', 'x', 'req-5'));
+    api.raise.mockRejectedValue(new ApiError(422, 'IDEMPOTENCY_KEY_REUSED', 'x', 'req-6'));
+    const dialog = await readyToRaise();
+    for (const code of ['IDEMPOTENCY_IN_PROGRESS', 'RESOURCE_BUSY', 'IDEMPOTENCY_KEY_REUSED']) {
+      await userEvent.click(raiseButton(dialog));
+      await within(dialog).findByText(code);
+    }
+    await userEvent.type(within(dialog).getByLabelText(/Pay by/), '2026-11-15');
+    await userEvent.click(raiseButton(dialog));
+    await waitFor(() => expect(api.raise).toHaveBeenCalledTimes(4));
+    expect(new Set(api.raise.mock.calls.map((call) => call[1])).size).toBe(1);
+  });
+
+  it('takes a new key after a stored refusal, because the same key would replay it', async () => {
+    api.raise.mockRejectedValueOnce(new ApiError(422, 'NO_RATE_IN_FORCE', 'x', 'req-1'));
+    api.raise.mockRejectedValue(new ApiError(409, 'INVALID_STATE', 'x', 'req-2'));
+    const dialog = await readyToRaise();
+    await userEvent.click(raiseButton(dialog));
+    await within(dialog).findByText(/Set a rate in the Institution’s Pricing tab first/);
+    // A rate was set meanwhile: the same details go out again, under a new key.
+    await userEvent.click(raiseButton(dialog));
+    expect(await within(dialog).findByText(/is deactivated, so no due can be raised/)).toBeInTheDocument();
+    expect(api.raise.mock.calls[1]![0]).toEqual(api.raise.mock.calls[0]![0]);
+    expect(keyOf(1)).not.toBe(keyOf(0));
+  });
+
+  it('takes a new key for changed details after a definite refusal that followed a lost answer', async () => {
     api.raise.mockRejectedValueOnce(ApiError.network(new Error('reset')));
     api.raise.mockRejectedValue(new ApiError(409, 'INVALID_STATE', 'x', 'req-4'));
-    const dialog = await openForm();
-    await fillPeriod(dialog);
-    await waitFor(() => expect(within(dialog).getByLabelText(/Students/)).toHaveValue('100'));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
+    const dialog = await readyToRaise();
+    await userEvent.click(raiseButton(dialog));
     await within(dialog).findByText('NETWORK_ERROR');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
-    await within(dialog).findByText('INVALID_STATE');
-    expect(api.raise.mock.calls[1]![1]).toBe(api.raise.mock.calls[0]![1]);
+    await userEvent.click(raiseButton(dialog));
+    await within(dialog).findByText(/is deactivated, so no due can be raised/);
+    expect(keyOf(1)).toBe(keyOf(0));
     await userEvent.type(within(dialog).getByLabelText(/Pay by/), '2026-11-15');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
+    await userEvent.click(raiseButton(dialog));
     await waitFor(() => expect(api.raise).toHaveBeenCalledTimes(3));
-    expect(api.raise.mock.calls[2]![1]).not.toBe(api.raise.mock.calls[0]![1]);
-  });
-
-  it('shows the API’s refusal for a missing rate, and for a deactivated Institution', async () => {
-    api.quote.mockResolvedValue(quote({ studentCountAuto: 100 }));
-    api.raise.mockRejectedValueOnce(new ApiError(422, 'NO_RATE_IN_FORCE', 'x', 'req-1'));
-    api.raise.mockRejectedValueOnce(new ApiError(409, 'INVALID_STATE', 'x', 'req-2'));
-    const dialog = await openForm();
-    await fillPeriod(dialog);
-    await waitFor(() => expect(within(dialog).getByLabelText(/Students/)).toHaveValue('100'));
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
-    expect(
-      await within(dialog).findByText(/Set a rate in the Institution’s Pricing tab first/),
-    ).toBeInTheDocument();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
-    expect(await within(dialog).findByText(/is deactivated, so no due can be raised/)).toBeInTheDocument();
+    expect(keyOf(2)).not.toBe(keyOf(0));
   });
 
   it('drops the refusal when a field is edited', async () => {
@@ -373,7 +447,12 @@ describe('raising a due', () => {
     const dialog = await openForm();
     await fillPeriod(dialog);
     await waitFor(() => expect(within(dialog).getByLabelText(/Students/)).toHaveValue('100'));
-    await userEvent.dblClick(within(dialog).getByRole('button', { name: 'Raise due' }));
+    const submit = within(dialog).getByRole('button', { name: 'Raise due' });
+    // Both clicks land before React renders the busy button, so only the guard can stop the second.
+    await act(async () => {
+      fireEvent.click(submit);
+      fireEvent.click(submit);
+    });
     expect(api.raise).toHaveBeenCalledTimes(1);
   });
 });

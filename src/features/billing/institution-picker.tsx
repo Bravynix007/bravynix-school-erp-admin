@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Mono } from '@/components/ui/mono';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,19 +34,29 @@ export function InstitutionPicker({
 }) {
   const [typed, setTyped] = useState('');
   const [q, setQ] = useState('');
+  // The control the user was on is replaced by the next one, so focus follows: Change after a pick, the search
+  // field after Change.
+  const change = useRef<HTMLButtonElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const moved = useRef(false);
+  useEffect(() => {
+    if (!moved.current) return;
+    moved.current = false;
+    (value === null ? search : change).current?.focus();
+  }, [value]);
+  const choose = (next: PickedInstitution | null) => {
+    moved.current = true;
+    onChange(next);
+  };
   useEffect(() => {
     const timer = setTimeout(() => setQ(typed.trim()), SEARCH_DELAY_MS);
     return () => clearTimeout(timer);
   }, [typed]);
   const searching = value === null && q.length >= 2;
-  const results = useInstitutionList({
-    page: 1,
-    limit: RESULTS,
-    sort: 'name',
-    q: searching ? q : '',
-    status: 'active',
-    blocked: '',
-  });
+  const results = useInstitutionList(
+    { page: 1, limit: RESULTS, sort: 'name', q, status: 'active', blocked: '' },
+    searching,
+  );
 
   if (value !== null) {
     return (
@@ -59,10 +69,11 @@ export function InstitutionPicker({
           </div>
           {locked ? null : (
             <Button
+              ref={change}
               variant="secondary"
               size="sm"
               aria-label={`Change Institution, now ${value.name}`}
-              onClick={() => onChange(null)}
+              onClick={() => choose(null)}
             >
               Change
             </Button>
@@ -75,6 +86,7 @@ export function InstitutionPicker({
   return (
     <div className="flex flex-col gap-2">
       <TextField
+        ref={search}
         label="Institution"
         requiredMark
         autoComplete="off"
@@ -102,7 +114,7 @@ export function InstitutionPicker({
               <li key={item.id}>
                 <button
                   type="button"
-                  onClick={() => onChange({ id: item.id, name: item.name, societyName: item.societyName })}
+                  onClick={() => choose({ id: item.id, name: item.name, societyName: item.societyName })}
                   className="flex w-full flex-col px-4 py-2.5 text-left hover:bg-row-hover"
                 >
                   <span className="font-medium">

@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/toast';
 import { institutionWorkspaceHref } from '@/features/institutions/institution-workspace';
 import { societyWorkspaceHref } from '@/features/societies/societies-list';
 import { formatMoney } from '@/lib/format/money';
+import { toPaise } from './due-math';
 import { formatInstant, formatSchoolDate, todayIst } from '@/lib/format/date';
 import { useGuardedWrite } from '@/lib/hooks/use-one-at-a-time';
 import { CancelDueDialog } from './cancel-due-dialog';
@@ -162,7 +163,7 @@ function DueBody({ due }: { due: Due }) {
       amount: due.baseAmount,
       note: due.studentCountNote ?? undefined,
     },
-    ...(Number(due.adjustmentAmount) === 0
+    ...(toPaise(due.adjustmentAmount) === 0n
       ? []
       : [{ label: 'Adjustment', amount: due.adjustmentAmount, note: due.adjustmentNote ?? undefined }]),
   ];
