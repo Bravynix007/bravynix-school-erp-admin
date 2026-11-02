@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Button } from './button';
 import { Dialog } from './dialog';
 
@@ -33,6 +33,11 @@ export function ConfirmDialog({
   /** An error banner or a field, shown under the sentence. */
   children?: ReactNode;
 }) {
+  const cancel = useRef<HTMLButtonElement>(null);
+  // The dialog is shown by an effect of its own, which runs before this one: focusing earlier would find it closed.
+  useEffect(() => {
+    if (open && tone === 'danger') cancel.current?.focus();
+  }, [open, tone]);
   return (
     <Dialog
       open={open}
@@ -43,7 +48,7 @@ export function ConfirmDialog({
       description={consequence}
       footer={
         <>
-          <Button variant="secondary" onClick={onCancel} disabled={loading} autoFocus={tone === 'danger'}>
+          <Button ref={cancel} variant="secondary" onClick={onCancel} disabled={loading}>
             {cancelLabel}
           </Button>
           <Button variant={tone === 'danger' ? 'danger' : 'primary'} onClick={onConfirm} loading={loading}>
