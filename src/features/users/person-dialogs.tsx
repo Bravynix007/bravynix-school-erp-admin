@@ -10,7 +10,7 @@ import { fieldErrorsOf } from '@/lib/api/field-errors';
 import { emailProblem, emptyPerson, personBody, personErrors, type PersonForm } from './person-form';
 import type { NewPerson } from './types';
 
-interface WriteState {
+export interface WriteState {
   pending: boolean;
   error: unknown;
   /** Shown beside Reload after a version conflict. */
@@ -20,7 +20,7 @@ interface WriteState {
 }
 
 /** A dialog that is one form: Enter submits, and the buttons sit in the footer (DESIGN.md 12). */
-function FormDialog({
+export function FormDialog({
   title,
   description,
   submitLabel,
@@ -82,7 +82,7 @@ function FormDialog({
  * The API's field errors for the last write, each dropped as soon as its field is edited: the message was about
  * the old value, and stays off until the next refusal.
  */
-function useServerErrors(error: unknown) {
+export function useServerErrors(error: unknown) {
   const [edited, setEdited] = useState<{ error: unknown; fields: ReadonlySet<string> }>({
     error,
     fields: new Set(),

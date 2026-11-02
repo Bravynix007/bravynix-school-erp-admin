@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 import { LoadFailed } from '@/components/shell/load-failed';
 import { PageHeader } from '@/components/shell/page-header';
@@ -17,6 +18,7 @@ import { societyWorkspaceHref } from '@/features/societies/societies-list';
 import { formatStamp } from '@/lib/format/date';
 import { useListControls } from '@/lib/hooks/use-list-controls';
 import { useUrlState } from '@/lib/hooks/use-url-state';
+import { institutionWorkspaceHref } from './institution-workspace';
 import type { InstitutionSummary } from './types';
 import { useInstitutionList } from './use-institutions';
 
@@ -37,6 +39,7 @@ const BLOCKED_OPTIONS = [
  * them. Super Admin reads Institutions here; the Owners of a Society add, edit and deactivate them (API design 10.4c).
  */
 export function InstitutionsList() {
+  const router = useRouter();
   const controls = useListControls('name');
   // Where focus goes when the row of a button the operator used leaves a filtered list (DESIGN.md 15).
   const region = useRef<HTMLDivElement>(null);
@@ -169,6 +172,7 @@ export function InstitutionsList() {
             refreshing={list.isPlaceholderData}
             sort={controls.sort}
             onSort={controls.toggleSort}
+            onRowOpen={(row) => router.push(institutionWorkspaceHref(row.id))}
             empty={
               filtered ? (
                 <EmptyState
