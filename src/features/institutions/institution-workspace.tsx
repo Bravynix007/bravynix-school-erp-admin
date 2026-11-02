@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StampBlock } from '@/components/ui/stamp-block';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { BlockedSectionChips } from '@/features/blocks/blocked-section-chips';
+import { DuesLedger } from '@/features/billing/dues-ledger';
 import { PricingTab } from '@/features/billing/pricing-tab';
 import { societyWorkspaceHref } from '@/features/societies/societies-list';
 import { useUrlState } from '@/lib/hooks/use-url-state';
@@ -22,12 +23,12 @@ import type { InstitutionDetail } from './types';
 import { useInstitution } from './use-institutions';
 
 const TAB_PREFIX = 'institution';
-const TABS = ['overview', 'pricing'];
+const TABS = ['overview', 'pricing', 'dues'];
 
 export const institutionWorkspaceHref = (id: string, tab?: string) =>
   `/institutions/workspace?id=${id}${tab ? `&tab=${tab}` : ''}` as Route;
 
-/** PLT-45: one Institution with its profile and its Pricing tab. The ID is a query parameter, because the console is a static export. */
+/** PLT-45: one Institution with its profile, its Pricing tab and its Dues. The ID is a query parameter, because the console is a static export. */
 export function InstitutionWorkspace() {
   // An empty `?id=` is no ID: it would fetch the list as if it were one Institution.
   const id = useSearchParams().get('id') || null;
@@ -96,7 +97,7 @@ function Workspace({ institution }: { institution: InstitutionDetail }) {
             {societyDeactivated
               ? 'Its Society is deactivated.'
               : 'This Institution is deactivated by its Society’s Owners.'}{' '}
-            Nothing was deleted, and it takes no new rate.
+            Nothing was deleted, and it takes no new rate or due.
           </InlineAlert>
         ) : null}
         <Tabs
@@ -107,6 +108,7 @@ function Workspace({ institution }: { institution: InstitutionDetail }) {
           items={[
             { value: 'overview', label: 'Overview' },
             { value: 'pricing', label: 'Pricing' },
+            { value: 'dues', label: 'Dues' },
           ]}
         />
 
@@ -149,6 +151,19 @@ function Workspace({ institution }: { institution: InstitutionDetail }) {
             institutionId={institution.id}
             institutionName={institution.name}
             canChange={!deactivated}
+          />
+        </TabPanel>
+
+        <TabPanel idPrefix={TAB_PREFIX} value="dues" active={tab === 'dues'}>
+          <DuesLedger
+            scope={{
+              institution: {
+                id: institution.id,
+                name: institution.name,
+                societyName: institution.societyName,
+              },
+              canRaise: !deactivated,
+            }}
           />
         </TabPanel>
       </div>

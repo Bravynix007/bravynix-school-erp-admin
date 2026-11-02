@@ -20,6 +20,7 @@ export function FormDialog({
   title,
   description,
   submitLabel,
+  dismissLabel = 'Cancel',
   tone = 'primary',
   write,
   onSubmit,
@@ -29,6 +30,8 @@ export function FormDialog({
   title: string;
   description?: string;
   submitLabel: string;
+  /** The button that closes without writing; "Cancel" unless that word means something else on this dialog. */
+  dismissLabel?: string;
   tone?: 'primary' | 'danger';
   write: WriteState;
   onSubmit: () => void;
@@ -51,7 +54,7 @@ export function FormDialog({
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={write.pending}>
-            Cancel
+            {dismissLabel}
           </Button>
           <Button
             type="submit"

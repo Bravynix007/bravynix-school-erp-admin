@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import type { SortDirection } from '@/components/ui/data-table';
 import { writeQuery } from './use-url-state';
 
-const SEARCH_DELAY_MS = 300;
+export const SEARCH_DELAY_MS = 300;
 
 export interface ListControls {
   /** What the search box shows. */

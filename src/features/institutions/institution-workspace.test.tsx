@@ -1,7 +1,9 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type * as DuesApiModule from '@/features/billing/dues-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
+import { dueLine } from '@/test/dues';
 import { history, institutionDetail } from '@/test/pricing';
 import { renderScreen } from '@/test/render';
 import { InstitutionWorkspace } from './institution-workspace';
@@ -19,8 +21,18 @@ vi.mock('./institutions-api', () => ({ institutionsApi: api }));
 const pricing = vi.hoisted(() => ({ history: vi.fn(), set: vi.fn() }));
 vi.mock('@/features/billing/pricing-api', () => ({ pricingApi: pricing }));
 
+const dues = vi.hoisted(() => ({ list: vi.fn() }));
+vi.mock('@/features/billing/dues-api', async (original) => ({
+  ...(await original<typeof DuesApiModule>()),
+  duesApi: dues,
+}));
+
 beforeEach(() => {
   api.get.mockReset();
+  dues.list.mockReset().mockResolvedValue({
+    items: [dueLine()],
+    meta: { page: 1, limit: 20, totalItems: 1, totalPages: 1 },
+  });
   pricing.history.mockReset().mockResolvedValue(history());
   id = 'i1';
   window.history.replaceState(null, '', '/institutions/workspace/?id=i1');
@@ -92,6 +104,27 @@ describe('InstitutionWorkspace', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Pricing' }));
     await screen.findByRole('region', { name: 'Rate in force' });
     expect(screen.queryByRole('button', { name: 'Set new rate' })).not.toBeInTheDocument();
+  });
+
+  it('opens the Dues tab with only this Institution’s dues, and keeps it in the URL', async () => {
+    api.get.mockResolvedValue(institutionDetail());
+    renderScreen(<InstitutionWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    expect(dues.list).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('tab', { name: 'Dues' }));
+    expect(await screen.findByText('BNX/FY2026-27/0007')).toBeInTheDocument();
+    expect(dues.list).toHaveBeenCalledWith(expect.objectContaining({ institutionId: 'i1' }));
+    expect(window.location.search).toContain('tab=dues');
+    expect(screen.getByRole('button', { name: 'Raise a due' })).toBeInTheDocument();
+  });
+
+  it('offers no new due for a deactivated Institution', async () => {
+    api.get.mockResolvedValue(institutionDetail({ status: 0 }));
+    renderScreen(<InstitutionWorkspace />);
+    await screen.findByRole('heading', { level: 1 });
+    await userEvent.click(screen.getByRole('tab', { name: 'Dues' }));
+    await screen.findByText('BNX/FY2026-27/0007');
+    expect(screen.queryByRole('button', { name: 'Raise a due' })).not.toBeInTheDocument();
   });
 
   it('shows dashes for what is not on file', async () => {

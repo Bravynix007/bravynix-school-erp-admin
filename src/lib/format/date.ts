@@ -41,3 +41,9 @@ export function formatStamp(actor: Actor | null | undefined, at: string): string
   const name = actor?.id ? actor.displayName : 'System';
   return `${name} · ${formatInstant(at)}`;
 }
+
+/** Today's school day in India, `YYYY-MM-DD`, for what is due or can be dated by "today" (API design 7.3). */
+export function todayIst(now: Date = new Date()): string {
+  const d = dateParts.formatToParts(now);
+  return `${part(d, 'year')}-${part(d, 'month')}-${part(d, 'day')}`;
+}
