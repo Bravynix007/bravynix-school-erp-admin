@@ -13,7 +13,6 @@ import { DueStatusChip } from '@/features/billing/due-status';
 import { useDueList } from '@/features/billing/use-dues';
 import { formatMoney, formatMoneyCompact } from '@/lib/format/money';
 import { formatSchoolDate, todayIst } from '@/lib/format/date';
-import { collectionChange } from './figures';
 import type { PlatformDashboard } from './types';
 import { useDashboard } from './use-dashboard';
 import { formatCount } from '@/lib/format/count';
@@ -61,7 +60,6 @@ function TilesSkeleton() {
 }
 
 function Tiles({ figures }: { figures: PlatformDashboard }) {
-  const change = collectionChange(figures.duesCollectedThisMonthAmount, figures.duesCollectedLastMonthAmount);
   return (
     <section aria-label="Platform figures" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <KpiTile label="Societies" value={formatCount(figures.societies)} caption="Active" href="/societies" />
@@ -87,7 +85,12 @@ function Tiles({ figures }: { figures: PlatformDashboard }) {
         label="Collected this month"
         value={formatMoneyCompact(figures.duesCollectedThisMonthAmount)}
         exact={formatMoney(figures.duesCollectedThisMonthAmount)}
-        caption={change ?? 'Dues with a paid date this month'}
+        caption={
+          <>
+            <span aria-hidden="true">{formatMoneyCompact(figures.duesCollectedLastMonthAmount)}</span>
+            <span className="sr-only">{formatMoney(figures.duesCollectedLastMonthAmount)}</span> last month
+          </>
+        }
       />
       {figures.openAiReports === null ? (
         <KpiTile label="Open AI reports" unavailable caption="Available with the AI reports" />

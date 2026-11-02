@@ -1,4 +1,5 @@
 import type { Route } from 'next';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
 
@@ -14,7 +15,7 @@ export function KpiTile({
   ...figure
 }: {
   label: string;
-  caption?: string;
+  caption?: ReactNode;
   /** Full value shown on hover and spoken, e.g. "₹12,40,000.00" behind "₹12.4 L". */
   exact?: string;
   href?: Route;
