@@ -90,13 +90,13 @@ export function DuesLedger({ scope }: { scope?: LedgerScope }) {
               <>
                 <Link
                   href={institutionWorkspaceHref(row.institution.id)}
-                  className="block font-medium text-primary hover:underline"
+                  className="flex min-h-6 items-center font-medium text-primary hover:underline"
                 >
                   {row.institution.name}
                 </Link>
                 <Link
                   href={societyWorkspaceHref(row.societyId)}
-                  className="text-caption text-ink-secondary hover:underline"
+                  className="flex min-h-6 items-center text-caption text-ink-secondary hover:underline"
                 >
                   {row.societyName}
                 </Link>

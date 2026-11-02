@@ -303,7 +303,7 @@ describe('raising a due', () => {
     expect(window.location.search).toBe('?due=d1');
   });
 
-  it('sends the same key when the same form is sent again, and a new one when it changed', async () => {
+  it('keeps the key after an answer that never came or a 5xx, even when the details change', async () => {
     api.quote.mockResolvedValue(quote({ studentCountAuto: 100 }));
     api.raise.mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'x', 'req-3'));
     const dialog = await openForm();
@@ -315,6 +315,25 @@ describe('raising a due', () => {
     await waitFor(() => expect(api.raise).toHaveBeenCalledTimes(2));
     expect(api.raise.mock.calls[1]![1]).toBe(api.raise.mock.calls[0]![1]);
 
+    // The outcome is still unknown, so changed details keep the key: the API decides.
+    await userEvent.type(within(dialog).getByLabelText(/Pay by/), '2026-11-15');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
+    await waitFor(() => expect(api.raise).toHaveBeenCalledTimes(3));
+    expect(api.raise.mock.calls[2]![1]).toBe(api.raise.mock.calls[0]![1]);
+  });
+
+  it('takes a new key for changed details only after a definite refusal', async () => {
+    api.quote.mockResolvedValue(quote({ studentCountAuto: 100 }));
+    api.raise.mockRejectedValueOnce(ApiError.network(new Error('reset')));
+    api.raise.mockRejectedValue(new ApiError(409, 'INVALID_STATE', 'x', 'req-4'));
+    const dialog = await openForm();
+    await fillPeriod(dialog);
+    await waitFor(() => expect(within(dialog).getByLabelText(/Students/)).toHaveValue('100'));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
+    await within(dialog).findByText('NETWORK_ERROR');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
+    await within(dialog).findByText('INVALID_STATE');
+    expect(api.raise.mock.calls[1]![1]).toBe(api.raise.mock.calls[0]![1]);
     await userEvent.type(within(dialog).getByLabelText(/Pay by/), '2026-11-15');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Raise due' }));
     await waitFor(() => expect(api.raise).toHaveBeenCalledTimes(3));

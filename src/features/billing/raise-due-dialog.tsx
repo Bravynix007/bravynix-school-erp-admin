@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FormDialog, useServerErrors, type WriteState } from '@/components/shell/form-dialog';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ApiError } from '@/lib/api/api-error';
 import { dueFormErrors, emptyDueForm, isRealDay, raiseBody, studentCountOf, type DueForm } from './due-form';
 import { DUE_FIELD, DueFields, DuePreview, NoRateAlert } from './due-fields';
 import { InstitutionPicker, type PickedInstitution } from './institution-picker';
@@ -35,7 +36,15 @@ export function RaiseDueDialog({
   const [typedCount, setTypedCount] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const server = useServerErrors(write.error);
-  const sent = useRef<{ body: string; key: string } | null>(null);
+  /**
+   * The last key sent, and whether its outcome is known. After a lost answer (no response, or a 5xx) the first raise
+   * may have landed, so the key is kept even when the details change: the API then replays it, or answers
+   * IDEMPOTENCY_KEY_REUSED, instead of raising a second invoice.
+   */
+  const sent = useRef<{ body: string; key: string; known: boolean } | null>(null);
+  useEffect(() => {
+    if (sent.current && write.error && !outcomeUnknown(write.error)) sent.current.known = true;
+  }, [write.error]);
 
   const periodKnown =
     isRealDay(form.periodStart) && isRealDay(form.periodEnd) && form.periodEnd >= form.periodStart;
@@ -72,7 +81,11 @@ export function RaiseDueDialog({
         if (institution === null || Object.keys(found).length > 0) return;
         const body = raiseBody(institution.id, shown);
         const text = JSON.stringify(body);
-        if (sent.current?.body !== text) sent.current = { body: text, key: crypto.randomUUID() };
+        if (sent.current === null || (sent.current.body !== text && sent.current.known)) {
+          sent.current = { body: text, key: crypto.randomUUID(), known: false };
+        }
+        sent.current.body = text;
+        sent.current.known = false;
         onSubmit(body, sent.current.key);
       }}
     >
@@ -102,4 +115,9 @@ export function RaiseDueDialog({
       ) : null}
     </FormDialog>
   );
+}
+
+/** No answer, or a server error: the raise may or may not have been made. */
+function outcomeUnknown(error: unknown): boolean {
+  return !(error instanceof ApiError) || error.status === 0 || error.status >= 500;
 }
