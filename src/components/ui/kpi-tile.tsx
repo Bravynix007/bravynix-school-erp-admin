@@ -12,19 +12,31 @@ export function KpiTile({
   caption,
   exact,
   href,
+  unavailable = false,
 }: {
   label: string;
-  value: string;
+  /** Ignored when `unavailable`. */
+  value?: string;
   caption?: string;
   /** Full value shown on hover and spoken, e.g. "₹12,40,000.00" behind "₹12.4 L". */
   exact?: string;
   href?: Route;
+  /** The figure does not exist yet (its module is not built): the tile says so instead of showing a made-up zero. */
+  unavailable?: boolean;
 }) {
   const body = (
     <>
       <p className="text-overline font-semibold tracking-[0.06em] text-ink-secondary uppercase">{label}</p>
-      <p title={exact} className="mt-2 text-display font-semibold tracking-[-0.01em] text-ink tabular">
-        {exact ? (
+      <p
+        title={exact}
+        className={cn(
+          'mt-2 font-semibold text-ink tabular',
+          unavailable ? 'text-h2 text-ink-secondary' : 'text-display tracking-[-0.01em]',
+        )}
+      >
+        {unavailable ? (
+          'Not available yet'
+        ) : exact ? (
           <>
             <span aria-hidden="true">{value}</span>
             <span className="sr-only">{exact}</span>
