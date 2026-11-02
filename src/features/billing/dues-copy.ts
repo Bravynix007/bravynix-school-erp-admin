@@ -11,7 +11,7 @@ export const DUE_ERROR_COPY: Record<string, string> = {
   INVALID_CODE: 'Choose how it was paid.',
   FIELD_NOT_ALLOWED: 'That part of a due cannot be changed.',
   IDEMPOTENCY_KEY_REUSED:
-    'This form was already sent with different details. Close it and raise the due again.',
+    'Your first try reached the server and raised the due. Close this form and find it in the ledger before raising another.',
   IDEMPOTENCY_IN_PROGRESS: 'The first request is still being processed. Wait a moment and try again.',
   IDEMPOTENCY_KEY_REQUIRED: 'Something went wrong. Close the form and try again.',
 };
