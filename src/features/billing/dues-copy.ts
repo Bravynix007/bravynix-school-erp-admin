@@ -9,7 +9,7 @@ export const DUE_ERROR_COPY: Record<string, string> = {
   TOTAL_NEGATIVE: 'The total cannot be below ₹0.00. Reduce the deduction.',
   NOTE_REQUIRED: 'A note is required for the count or the adjustment you entered.',
   IDEMPOTENCY_KEY_REUSED:
-    'Your first try reached the server and raised the due. Close this form and find it in the ledger before raising another.',
+    'Your first try reached the server with other details. Close this form and check the ledger before raising the due again.',
   IDEMPOTENCY_IN_PROGRESS: 'The first request is still being processed. Wait a moment and try again.',
   IDEMPOTENCY_KEY_REQUIRED: 'Something went wrong. Close the form and try again.',
 };

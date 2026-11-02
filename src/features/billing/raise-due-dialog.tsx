@@ -45,7 +45,7 @@ export function RaiseDueDialog({
    */
   const sent = useRef<{ key: string; refused: boolean } | null>(null);
   useEffect(() => {
-    if (sent.current && write.error && !outcomeUnknown(write.error)) sent.current.refused = true;
+    if (sent.current && write.error && isDefiniteRefusal(write.error)) sent.current.refused = true;
   }, [write.error]);
 
   const periodKnown =
@@ -116,14 +116,16 @@ export function RaiseDueDialog({
   );
 }
 
-/** The raise may or may not have been made: no answer, a server error, or the first request still running. */
-const UNKNOWN_OUTCOME_CODES = new Set(['IDEMPOTENCY_IN_PROGRESS', 'RESOURCE_BUSY', 'IDEMPOTENCY_KEY_REUSED']);
+/** A refusal the API sent: a 4xx with a code of its own, other than one that says the first request may have landed. */
+const MAY_HAVE_LANDED = new Set([
+  'IDEMPOTENCY_IN_PROGRESS',
+  'RESOURCE_BUSY',
+  'IDEMPOTENCY_KEY_REUSED',
+  'UNEXPECTED_RESPONSE',
+]);
 
-function outcomeUnknown(error: unknown): boolean {
+function isDefiniteRefusal(error: unknown): boolean {
   return (
-    !(error instanceof ApiError) ||
-    error.status === 0 ||
-    error.status >= 500 ||
-    UNKNOWN_OUTCOME_CODES.has(error.code)
+    error instanceof ApiError && error.status >= 400 && error.status < 500 && !MAY_HAVE_LANDED.has(error.code)
   );
 }

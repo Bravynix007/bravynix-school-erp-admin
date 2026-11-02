@@ -401,6 +401,16 @@ describe('raising a due', () => {
     expect(new Set(api.raise.mock.calls.map((call) => call[1])).size).toBe(1);
   });
 
+  it('keeps the key when the answer could not be read, because the raise may have been made', async () => {
+    api.raise.mockRejectedValue(new ApiError(200, 'UNEXPECTED_RESPONSE', 'x', 'req-7'));
+    const dialog = await readyToRaise();
+    await userEvent.click(raiseButton(dialog));
+    await within(dialog).findByText('UNEXPECTED_RESPONSE');
+    await userEvent.click(raiseButton(dialog));
+    await waitFor(() => expect(api.raise).toHaveBeenCalledTimes(2));
+    expect(keyOf(1)).toBe(keyOf(0));
+  });
+
   it('takes a new key after a stored refusal, because the same key would replay it', async () => {
     api.raise.mockRejectedValueOnce(new ApiError(422, 'NO_RATE_IN_FORCE', 'x', 'req-1'));
     api.raise.mockRejectedValue(new ApiError(409, 'INVALID_STATE', 'x', 'req-2'));
