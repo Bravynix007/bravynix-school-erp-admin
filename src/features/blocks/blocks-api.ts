@@ -19,6 +19,9 @@ export function createBlocksApi(client: ApiClient = api) {
 
   return {
     list,
+    /** The newest active blocks of every Society, for the dashboard (PLT-44 sorts newest first). */
+    recent: (limit: number): Promise<Page<AccessBlock>> =>
+      getPage<AccessBlock>(base, { page: 1, limit }, client),
     block: (body: BlockSectionBody) => client.data<AccessBlock>(base, { method: 'POST', body }),
     lift: (id: string) => client.data<{ id: string; status: 0 }>(`${base}/${id}`, { method: 'DELETE' }),
     /**

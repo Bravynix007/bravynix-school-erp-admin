@@ -4,10 +4,11 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { LoadFailed } from '@/components/shell/load-failed';
 import { PageHeader } from '@/components/shell/page-header';
-import { InlineAlert } from '@/components/ui/inline-alert';
 import { KpiTile } from '@/components/ui/kpi-tile';
 import { LinkButton } from '@/components/ui/link-button';
+import { BlockedAccessQueue } from '@/features/blocks/blocked-access-queue';
 import { Mono } from '@/components/ui/mono';
+import { QUEUE_SIZE, QueueCard } from '@/components/ui/queue-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DueStatusChip } from '@/features/billing/due-status';
 import { useDueList } from '@/features/billing/use-dues';
@@ -16,8 +17,6 @@ import { formatSchoolDate, todayIst } from '@/lib/format/date';
 import type { PlatformDashboard } from './types';
 import { useDashboard } from './use-dashboard';
 import { formatCount } from '@/lib/format/count';
-
-const QUEUE_SIZE = 5;
 
 /**
  * Screen 08: what the platform looks like today (PLT-01) and the dues that need chasing. Figures that do not exist
@@ -43,6 +42,7 @@ export function PlatformDashboardView() {
         <div className="flex flex-col gap-8">
           {dashboard.isPending ? <TilesSkeleton /> : <Tiles figures={dashboard.data} />}
           <OpenDues />
+          <BlockedAccessQueue />
         </div>
       )}
     </>
@@ -105,66 +105,39 @@ function Tiles({ figures }: { figures: PlatformDashboard }) {
 function OpenDues() {
   const list = useDueList({ page: 1, limit: QUEUE_SIZE, sort: 'dueDate', q: '', status: 'due' });
   const today = todayIst();
-  const total = list.data?.meta.totalItems;
 
   return (
-    <section aria-label="Open dues" className="rounded-lg border border-line bg-surface">
-      <header className="flex items-center justify-between gap-3 border-b border-line-subtle px-5 py-4">
-        <h2 className="text-h3 font-semibold">
-          Open dues
-          {total === undefined ? null : (
-            <span className="ml-2 text-caption font-normal text-ink-secondary">
-              {formatCount(total)} open
-            </span>
-          )}
-        </h2>
+    <QueueCard
+      title="Open dues"
+      countLabel="open"
+      aside={() => (
         <Link href="/dues" className="text-label font-medium text-primary hover:underline">
           All dues
         </Link>
-      </header>
-      {list.isPending ? (
-        <div role="status" aria-label="Loading the open dues" className="flex flex-col gap-3 p-5">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      ) : list.isError ? (
-        <div className="p-5">
-          <InlineAlert tone="warning">
-            The open dues could not be loaded.{' '}
-            <button type="button" className="underline" onClick={() => void list.refetch()}>
-              Try again
-            </button>
-          </InlineAlert>
-        </div>
-      ) : list.data.items.length === 0 ? (
-        <p className="px-5 py-8 text-center text-caption text-ink-secondary">
-          No dues are waiting for payment.
-        </p>
-      ) : (
-        <ul className="divide-y divide-line-subtle">
-          {list.data.items.map((due) => (
-            <li key={due.id}>
-              <Link
-                href={`/dues?due=${encodeURIComponent(due.id)}` as Route}
-                className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-5 py-3 hover:bg-row-hover"
-              >
-                <span className="min-w-0">
-                  <Mono className="block text-caption text-ink-secondary">{due.invoiceNo}</Mono>
-                  <span className="block font-medium break-words">{due.institution.name}</span>
-                  <span className="text-caption text-ink-secondary tabular">
-                    Pay by {due.dueDate ? formatSchoolDate(due.dueDate) : '—'}
-                  </span>
-                </span>
-                <span className="flex flex-col items-end gap-1">
-                  <span className="font-medium tabular">{formatMoney(due.totalAmount)}</span>
-                  <DueStatusChip due={due} today={today} />
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
       )}
-    </section>
+      query={list}
+      loadingLabel="Loading the open dues"
+      loadingRows={3}
+      failed="The open dues could not be loaded."
+      empty="No dues are waiting for payment."
+      renderRow={(due) => (
+        <Link
+          href={`/dues?due=${encodeURIComponent(due.id)}` as Route}
+          className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-5 py-3 hover:bg-row-hover"
+        >
+          <span className="min-w-0">
+            <Mono className="block text-caption text-ink-secondary">{due.invoiceNo}</Mono>
+            <span className="block font-medium break-words">{due.institution.name}</span>
+            <span className="text-caption text-ink-secondary tabular">
+              Pay by {due.dueDate ? formatSchoolDate(due.dueDate) : '—'}
+            </span>
+          </span>
+          <span className="flex flex-col items-end gap-1">
+            <span className="font-medium tabular">{formatMoney(due.totalAmount)}</span>
+            <DueStatusChip due={due} today={today} />
+          </span>
+        </Link>
+      )}
+    />
   );
 }

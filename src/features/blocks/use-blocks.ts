@@ -9,6 +9,7 @@ import type { BlockSectionBody, BlockTarget } from './types';
 export const blockKeys = {
   all: ['access-blocks'] as const,
   society: (societyId: string) => [...blockKeys.all, 'society', societyId] as const,
+  recent: (limit: number) => [...blockKeys.all, 'recent', limit] as const,
 };
 
 /** The most a Society can hold: one for its Owners and two for each Institution. PLT-44 answers up to 100 a page. */
@@ -20,6 +21,11 @@ export function useSocietyBlocks(societyId: string) {
     queryKey: blockKeys.society(societyId),
     queryFn: () => blocksApi.list({ societyId, limit: SOCIETY_BLOCKS_LIMIT }),
   });
+}
+
+/** The newest active blocks of every Society: the dashboard's queue. A block or an unblock refreshes it. */
+export function useRecentBlocks(limit: number) {
+  return useQuery({ queryKey: blockKeys.recent(limit), queryFn: () => blocksApi.recent(limit) });
 }
 
 /** A block or an unblock changes what the Society, Institution and block lists show, even when it is refused. */

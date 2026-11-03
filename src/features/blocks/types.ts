@@ -8,7 +8,11 @@ export interface AccessBlock {
   id: string;
   section: BlockSection;
   societyId: string;
+  /** The Society's name now, so a list of blocks needs no second lookup (Phase 3 slice B6). */
+  societyName: string;
   institutionId: string | null;
+  /** `null` for `owners`. */
+  institutionName: string | null;
   reason: string;
   blockedAt: string;
   blockedBy: Actor;

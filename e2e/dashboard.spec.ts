@@ -29,6 +29,22 @@ test('the dashboard shows the live figures, says "Not available yet" for the res
       openAiReports: null,
     }),
   );
+  await mockApi(page, 'platform/access-blocks*', () => ({
+    ...envelope([
+      {
+        id: 'b1',
+        section: 'staff',
+        societyId: 's1',
+        societyName: 'Sri Vidya Educational Society',
+        institutionId: 'i1',
+        institutionName: 'Sri Vidya High School',
+        reason: 'Annual fee unpaid',
+        blockedAt: '2026-10-27T04:30:00.000Z',
+        blockedBy: { id: 'p1', displayName: 'A. Rao', roleName: 'Super Admin' },
+      },
+    ]),
+    meta: { page: 1, limit: 5, totalItems: 1, totalPages: 1 },
+  }));
   await mockApi(page, 'platform/dues*', () => ({
     ...envelope([due]),
     meta: { page: 1, limit: 5, totalItems: 1, totalPages: 1 },
@@ -65,6 +81,10 @@ test('the dashboard shows the live figures, says "Not available yet" for the res
   await expect(figures.getByText('Not available yet')).toHaveCount(2);
   const queue = page.getByRole('region', { name: 'Open dues' });
   await expect(queue).toContainText('Past due');
+  const blocked = page.getByRole('region', { name: 'Blocked access' });
+  await expect(blocked).toContainText('Sri Vidya High School');
+  await expect(blocked).toContainText('Staff blocked');
+  await expect(blocked).toContainText('Annual fee unpaid');
   expect(await axeViolations(page)).toEqual([]);
 
   await queue.getByRole('link', { name: /BNX\/FY2026-27\/0007/ }).click();
