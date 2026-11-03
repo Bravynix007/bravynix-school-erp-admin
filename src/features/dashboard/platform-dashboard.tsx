@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/shell/page-header';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { KpiTile } from '@/components/ui/kpi-tile';
 import { LinkButton } from '@/components/ui/link-button';
+import { BlockedAccessQueue } from '@/features/blocks/blocked-access-queue';
 import { Mono } from '@/components/ui/mono';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DueStatusChip } from '@/features/billing/due-status';
@@ -43,6 +44,7 @@ export function PlatformDashboardView() {
         <div className="flex flex-col gap-8">
           {dashboard.isPending ? <TilesSkeleton /> : <Tiles figures={dashboard.data} />}
           <OpenDues />
+          <BlockedAccessQueue />
         </div>
       )}
     </>

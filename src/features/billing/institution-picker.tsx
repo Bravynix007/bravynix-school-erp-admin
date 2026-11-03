@@ -57,6 +57,8 @@ export function InstitutionPicker({
     { page: 1, limit: RESULTS, sort: 'name', q, status: 'active', blocked: '' },
     searching,
   );
+  // An Institution of a deactivated Society takes no due (the API refuses it), so it is not offered.
+  const offered = results.data?.items.filter((item) => item.societyStatus === 1) ?? [];
 
   if (value !== null) {
     return (
@@ -103,14 +105,14 @@ export function InstitutionPicker({
           <p role="alert" className="text-caption text-error">
             The Institutions could not be loaded. Change the search to try again.
           </p>
-        ) : results.data.items.length === 0 ? (
+        ) : offered.length === 0 ? (
           <p className="text-caption text-ink-secondary">No active Institution matches “{q}”.</p>
         ) : (
           <ul
             aria-label="Institutions found"
             className="divide-y divide-line-subtle rounded-lg border border-line bg-surface"
           >
-            {results.data.items.map((item) => (
+            {offered.map((item) => (
               <li key={item.id}>
                 <button
                   type="button"

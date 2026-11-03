@@ -32,6 +32,18 @@ describe('blocks api', () => {
     expect(call(0).url.searchParams.get('limit')).toBe('100');
   });
 
+  it('reads the newest blocks of every Society, with the Society and Institution names', async () => {
+    const { api, call } = setup(listed(block()));
+    const page = await api.recent(5);
+    expect(page.items[0]).toMatchObject({
+      societyName: 'Sri Vidya Educational Society',
+      institutionName: 'Sri Vidya High School',
+    });
+    expect(call(0).url.pathname).toBe('/v1/platform/access-blocks');
+    expect(call(0).url.searchParams.get('societyId')).toBeNull();
+    expect(call(0).url.searchParams.get('limit')).toBe('5');
+  });
+
   it('blocks a section with the reason', async () => {
     const { api, call } = setup(ok(block(), 'CREATED', 201));
     await api.block({ section: 'staff', societyId: 's1', institutionId: 'i1', reason: 'Annual fee unpaid' });

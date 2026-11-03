@@ -224,6 +224,21 @@ describe('raising a due', () => {
     expect(within(dialog).getByRole('button', { name: /Change Institution/ })).toBeInTheDocument();
   });
 
+  it('does not offer an Institution of a deactivated Society', async () => {
+    api.quote.mockResolvedValue(quote());
+    institutions.list.mockResolvedValue({
+      items: [
+        institution(),
+        institution({ id: 'i2', name: 'Lake View School', societyName: 'Gone Society', societyStatus: 0 }),
+      ],
+      meta: { page: 1, limit: 8, totalItems: 2, totalPages: 1 },
+    });
+    const dialog = await openForm(false);
+    await userEvent.type(within(dialog).getByLabelText(/^Institution/), 'school');
+    expect(await within(dialog).findByRole('button', { name: /Sri Vidya High School/ })).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /Lake View School/ })).not.toBeInTheDocument();
+  });
+
   it('asks the system for the count and the rate once the period is known, and previews the total', async () => {
     api.quote.mockResolvedValue(quote({ studentCountAuto: 1650, baseAmount: '82500.00' }));
     const dialog = await openForm();

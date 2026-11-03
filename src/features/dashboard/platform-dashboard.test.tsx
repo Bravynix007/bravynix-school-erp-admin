@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
+import { block } from '@/test/blocks';
 import { dashboardFigures, dueLine } from '@/test/dues';
 import { renderScreen } from '@/test/render';
 import { PlatformDashboardView } from './platform-dashboard';
@@ -16,7 +17,10 @@ vi.mock('./dashboard-api', () => ({ dashboardApi: dashboard }));
 const dues = vi.hoisted(() => ({ list: vi.fn() }));
 vi.mock('@/features/billing/dues-api', () => ({ duesApi: dues }));
 
-const page = (items: ReturnType<typeof dueLine>[], totalItems = items.length) => ({
+const blocks = vi.hoisted(() => ({ recent: vi.fn() }));
+vi.mock('@/features/blocks/blocks-api', () => ({ blocksApi: blocks }));
+
+const page = <T,>(items: T[], totalItems = items.length) => ({
   items,
   meta: { page: 1, limit: 5, totalItems, totalPages: 1 },
 });
@@ -24,6 +28,65 @@ const page = (items: ReturnType<typeof dueLine>[], totalItems = items.length) =>
 beforeEach(() => {
   dashboard.get.mockReset().mockResolvedValue(dashboardFigures());
   dues.list.mockReset().mockResolvedValue(page([dueLine()], 12));
+  blocks.recent.mockReset().mockResolvedValue(page([], 0));
+});
+
+describe('PlatformDashboardView blocked access', () => {
+  it('lists the newest blocks by name, each opening the page where it is lifted', async () => {
+    blocks.recent.mockResolvedValue(
+      page(
+        [
+          block(),
+          block({
+            id: 'b2',
+            section: 'owners',
+            institutionId: null,
+            institutionName: null,
+            reason: 'Society dues unpaid',
+          }),
+        ],
+        7,
+      ),
+    );
+    renderScreen(<PlatformDashboardView />);
+    const queue = await screen.findByRole('region', { name: 'Blocked access' });
+    expect(await within(queue).findByText('7 in force')).toBeInTheDocument();
+    expect(within(queue).getByText('Newest 5 shown')).toBeInTheDocument();
+    expect(blocks.recent).toHaveBeenCalledWith(5);
+    const [staff, owners] = within(queue).getAllByRole('link');
+    expect(staff).toHaveTextContent('Sri Vidya High School');
+    expect(staff).toHaveTextContent('Sri Vidya Educational Society');
+    expect(staff).toHaveTextContent('Annual fee unpaid');
+    expect(staff).toHaveTextContent('Staff blocked');
+    expect(staff).toHaveAttribute('href', '/institutions/workspace?id=i1');
+    expect(owners).toHaveTextContent('Society dues unpaid');
+    expect(owners).toHaveTextContent('Owners blocked');
+    expect(owners).toHaveAttribute('href', '/societies/workspace?id=s1&tab=access');
+  });
+
+  it('says when nothing is blocked, and shows no count of hidden rows', async () => {
+    renderScreen(<PlatformDashboardView />);
+    const queue = await screen.findByRole('region', { name: 'Blocked access' });
+    expect(await within(queue).findByText(/Nothing is blocked/)).toBeInTheDocument();
+    expect(within(queue).queryByText('Newest 5 shown')).not.toBeInTheDocument();
+  });
+
+  it('keeps the rest of the dashboard when the blocks cannot be loaded, and offers Try again', async () => {
+    blocks.recent.mockRejectedValueOnce(new ApiError(500, 'INTERNAL_ERROR', 'x', 'r'));
+    renderScreen(<PlatformDashboardView />);
+    const queue = await screen.findByRole('region', { name: 'Blocked access' });
+    expect(await within(queue).findByText(/could not be loaded/)).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Platform figures' })).toBeInTheDocument();
+    blocks.recent.mockResolvedValue(page([block()], 1));
+    await userEvent.click(within(queue).getByRole('button', { name: 'Try again' }));
+    expect(await within(queue).findByText('Annual fee unpaid')).toBeInTheDocument();
+  });
+
+  it('shows a loading state first', async () => {
+    blocks.recent.mockReturnValue(new Promise(() => undefined));
+    renderScreen(<PlatformDashboardView />);
+    expect(await screen.findByRole('status', { name: 'Loading the blocked access' })).toBeInTheDocument();
+  });
 });
 
 describe('PlatformDashboardView', () => {

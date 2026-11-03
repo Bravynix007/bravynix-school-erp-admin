@@ -5,6 +5,8 @@ import type { Phone } from '@/features/societies/types';
 export interface InstitutionSummary extends Stamped {
   societyId: string;
   societyName: string;
+  /** 1 active, 0 deactivated. The Institution keeps its own status when its Society is deactivated. */
+  societyStatus: number;
   code: string;
   name: string;
   place: string | null;
