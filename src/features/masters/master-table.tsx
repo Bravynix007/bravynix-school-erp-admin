@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { IconArrowDown, IconArrowUp, IconEye, IconEyeOff, IconPencil } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { DataTable, type Column } from '@/components/ui/data-table';
@@ -35,6 +35,30 @@ export function MasterTable({
   actions: RowActions;
   empty: ReactNode;
 }) {
+  // An arrow pressed to the first or last place becomes disabled, and a disabled button drops focus to the page.
+  // Once the list shows the entry in its new place, focus goes to the row's other arrow instead.
+  const arrows = useRef(new Map<string, HTMLButtonElement>());
+  const moved = useRef<{ id: string; by: -1 | 1; from: number } | null>(null);
+  useEffect(() => {
+    const move = moved.current;
+    const entry = move ? entries.find((item) => item.id === move.id) : undefined;
+    if (!move || !entry || entry.displayOrder === move.from) return;
+    moved.current = null;
+    const index = entries.indexOf(entry);
+    const atEnd = move.by === -1 ? index === 0 : index === entries.length - 1;
+    const active = document.activeElement;
+    const lost =
+      active === null || active === document.body || (active instanceof HTMLButtonElement && active.disabled);
+    if (atEnd && lost) arrows.current.get(`${entry.id}:${move.by === -1 ? 'down' : 'up'}`)?.focus();
+  }, [entries]);
+  const arrowRef = (key: string) => (element: HTMLButtonElement | null) => {
+    if (element) arrows.current.set(key, element);
+    else arrows.current.delete(key);
+  };
+  const move = (entry: MasterEntry, by: -1 | 1) => {
+    moved.current = { id: entry.id, by, from: entry.displayOrder };
+    actions.onMove(entry, by);
+  };
   const columns: Column<MasterEntry>[] = [
     {
       key: 'name',
@@ -77,20 +101,22 @@ export function MasterTable({
             <Button
               variant="secondary"
               size="sm"
+              ref={arrowRef(`${entry.id}:up`)}
               aria-label={`Move ${entry.name} up`}
               title={index === 0 ? 'Already first' : undefined}
               disabled={index === 0}
               icon={<IconArrowUp size={16} aria-hidden="true" />}
-              onClick={() => actions.onMove(entry, -1)}
+              onClick={() => move(entry, -1)}
             />
             <Button
               variant="secondary"
               size="sm"
+              ref={arrowRef(`${entry.id}:down`)}
               aria-label={`Move ${entry.name} down`}
               title={index === entries.length - 1 ? 'Already last' : undefined}
               disabled={index === entries.length - 1}
               icon={<IconArrowDown size={16} aria-hidden="true" />}
-              onClick={() => actions.onMove(entry, 1)}
+              onClick={() => move(entry, 1)}
             />
             <Button
               variant="secondary"

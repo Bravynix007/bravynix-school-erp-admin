@@ -40,7 +40,6 @@ export function MastersTab({ type }: { type: MasterType }) {
   const attempt = useGuardedWrite();
   const [open, setOpen] = useState<Open>(null);
 
-  const query = spec.isClass ? categoryList : list;
   if (list.isError || categoryList.isError) {
     const failed = list.isError ? list : categoryList;
     return (
@@ -67,7 +66,7 @@ export function MastersTab({ type }: { type: MasterType }) {
   const entries = inOrder(list.data);
   const categories = inOrder(categoryList.data ?? []);
   const groups: Group[] = spec.isClass ? groupByCategory(categories, entries) : [{ key: null, entries }];
-  const refreshing = list.isRefetching || query.isRefetching;
+  const refreshing = list.isRefetching || (spec.isClass && categoryList.isRefetching);
   const noCategory = spec.isClass && categories.length === 0;
 
   function write(entry: MasterEntry, body: Parameters<typeof change.mutate>[0]['body'], done: string) {

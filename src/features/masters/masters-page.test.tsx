@@ -77,6 +77,32 @@ describe('MastersPage', () => {
     expect(await screen.findByText('Teacher moved up')).toBeInTheDocument();
   });
 
+  it('keeps focus on the row when an entry is moved into the first or last place (QA C1 D1)', async () => {
+    const user = userEvent.setup();
+    let moved = false;
+    api.list.mockImplementation(() =>
+      Promise.resolve(
+        moved
+          ? [
+              entry({ id: 'b', name: 'Teacher', displayOrder: 1, version: 6 }),
+              entry({ id: 'a', name: 'Principal', displayOrder: 2, version: 2 }),
+            ]
+          : [
+              entry({ id: 'a', name: 'Principal' }),
+              entry({ id: 'b', name: 'Teacher', displayOrder: 2, version: 5 }),
+            ],
+      ),
+    );
+    api.update.mockImplementation(() => {
+      moved = true;
+      return Promise.resolve(entry());
+    });
+    await open('designations');
+    await user.click(await screen.findByRole('button', { name: 'Move Teacher up' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Move Teacher up' })).toBeDisabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Move Teacher down' })).toHaveFocus());
+  });
+
   it('moves a class only within its category', async () => {
     const user = userEvent.setup();
     lists({ 'class-categories': categories(), 'predefined-classes': classes() });

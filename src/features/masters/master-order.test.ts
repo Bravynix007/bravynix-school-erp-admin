@@ -25,6 +25,13 @@ describe('master order', () => {
     expect(moveBody(group, group[0]!, 1)).toEqual({ version: 1, displayOrder: 2 });
   });
 
+  it('sends the neighbour’s place when places are not consecutive, as predefined classes share one order', () => {
+    const group = [1, 2, 3, 7].map((displayOrder) => entry({ id: `k${displayOrder}`, displayOrder }));
+    expect(moveBody(group, group[3]!, -1)).toEqual({ version: 1, displayOrder: 3 });
+    expect(moveBody(group, group[2]!, 1)).toEqual({ version: 1, displayOrder: 7 });
+    expect(moveBody(group, group[0]!, 1)).toEqual({ version: 1, displayOrder: 2 });
+  });
+
   it('has no move past either end', () => {
     const group = inOrder(classes()).slice(0, 2);
     expect(moveBody(group, group[0]!, -1)).toBeNull();
