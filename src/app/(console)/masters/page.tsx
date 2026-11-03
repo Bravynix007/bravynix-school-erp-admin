@@ -1,8 +1,15 @@
 import type { Metadata } from 'next';
-import { ComingSoon } from '@/components/shell/coming-soon';
+import { Suspense } from 'react';
+import { FullPageSpinner } from '@/components/shell/full-page-spinner';
+import { MastersPage } from '@/features/masters/masters-page';
 
 export const metadata: Metadata = { title: 'Masters' };
 
-export default function MastersPage() {
-  return <ComingSoon title="Masters" phase="phase 3 (academic setup)" />;
+// `useSearchParams` needs a Suspense boundary in a static export.
+export default function Page() {
+  return (
+    <Suspense fallback={<FullPageSpinner />}>
+      <MastersPage />
+    </Suspense>
+  );
 }
