@@ -239,6 +239,37 @@ describe('raising a due', () => {
     expect(within(dialog).queryByRole('button', { name: /Lake View School/ })).not.toBeInTheDocument();
   });
 
+  it('does not say nothing matches when the first page is all deactivated Societies (QA C2 D2)', async () => {
+    api.quote.mockResolvedValue(quote());
+    institutions.list.mockResolvedValue({
+      items: Array.from({ length: 8 }, (_, n) =>
+        institution({
+          id: `z${n}`,
+          name: `Zeta School ${n + 1}`,
+          societyName: 'Gone Society',
+          societyStatus: 0,
+        }),
+      ),
+      meta: { page: 1, limit: 8, totalItems: 9, totalPages: 2 },
+    });
+    const dialog = await openForm(false);
+    await userEvent.type(within(dialog).getByLabelText(/^Institution/), 'zeta');
+    expect(await within(dialog).findByText(/Type more of the name or code/)).toBeInTheDocument();
+    expect(within(dialog).queryByText(/No active Institution matches/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /Zeta School/ })).not.toBeInTheDocument();
+  });
+
+  it('says more match when the search found more than it lists', async () => {
+    api.quote.mockResolvedValue(quote());
+    institutions.list.mockResolvedValue({
+      items: [institution()],
+      meta: { page: 1, limit: 8, totalItems: 12, totalPages: 2 },
+    });
+    const dialog = await openForm(false);
+    await userEvent.type(within(dialog).getByLabelText(/^Institution/), 'school');
+    expect(await within(dialog).findByText(/More Institutions match/)).toBeInTheDocument();
+  });
+
   it('asks the system for the count and the rate once the period is known, and previews the total', async () => {
     api.quote.mockResolvedValue(quote({ studentCountAuto: 1650, baseAmount: '82500.00' }));
     const dialog = await openForm();

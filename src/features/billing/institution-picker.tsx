@@ -106,7 +106,11 @@ export function InstitutionPicker({
             The Institutions could not be loaded. Change the search to try again.
           </p>
         ) : offered.length === 0 ? (
-          <p className="text-caption text-ink-secondary">No active Institution matches “{q}”.</p>
+          <p className="text-caption text-ink-secondary">
+            {results.data.meta.totalItems > results.data.items.length
+              ? `The first matches for “${q}” are Institutions of deactivated Societies. Type more of the name or code.`
+              : `No active Institution matches “${q}”.`}
+          </p>
         ) : (
           <ul
             aria-label="Institutions found"
@@ -126,6 +130,11 @@ export function InstitutionPicker({
                 </button>
               </li>
             ))}
+            {results.data.meta.totalItems > results.data.items.length ? (
+              <li className="px-4 py-2.5 text-caption text-ink-secondary">
+                More Institutions match. Type more of the name or code to find one not listed.
+              </li>
+            ) : null}
           </ul>
         )
       ) : null}
