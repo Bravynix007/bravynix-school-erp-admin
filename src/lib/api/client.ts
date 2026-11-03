@@ -24,6 +24,11 @@ export interface RequestOptions {
    */
   anonymous?: boolean;
   signal?: AbortSignal;
+  /**
+   * How the browser may use its HTTP cache. A list the console is managing (the masters with `includeHidden`) uses
+   * `no-cache`, so the browser revalidates it and the screen never shows a change late (API design 10.4g).
+   */
+  cache?: RequestCache;
 }
 
 type Fetch = typeof fetch;
@@ -218,6 +223,7 @@ export class ApiClient {
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
         // Sends the refresh cookie to /v1/auth on the API's domain.
         credentials: 'include',
+        cache: options.cache,
         signal,
       });
     } catch (error) {

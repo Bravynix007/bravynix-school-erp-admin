@@ -13,6 +13,15 @@ function headersOf(call: unknown[]): Record<string, string> {
 describe('ApiClient', () => {
   beforeEach(() => tokenStore.clear());
 
+  it('leaves the cache alone unless a call asks for no-cache', async () => {
+    const fetch = fakeFetch(ok(1), ok(2));
+    const client = new ApiClient({ baseUrl: BASE, fetch });
+    await client.data('masters/designations');
+    await client.data('masters/designations', { cache: 'no-cache' });
+    expect(fetch.mock.calls[0]![1]?.cache).toBeUndefined();
+    expect(fetch.mock.calls[1]![1]?.cache).toBe('no-cache');
+  });
+
   it('unwraps data and sends the standard headers', async () => {
     tokenStore.set('access-1');
     const fetch = fakeFetch(ok({ name: 'Sri Vidya Educational Society' }));
